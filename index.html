@@ -19,6 +19,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
     --bg:#F4F7FB;
@@ -90,6 +91,16 @@
   .fasting-btn.stop{background:var(--rose);}
 
   .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+  .streak-row{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+  .streak-card{background:var(--card); border-radius:var(--radius-sm); padding:15px 16px; box-shadow:var(--shadow); text-align:center;}
+  .streak-num{font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--sage-deep);}
+  .streak-num span{font-size:13px; font-weight:600; margin-left:2px; color:var(--ink-soft);}
+  .streak-lab{font-size:11.5px; color:var(--ink-soft); font-weight:600; margin-top:4px;}
+  .report-link-btn, .backup-link-btn, .compare-link-btn{
+    width:100%; background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:13px;
+    font-size:13.5px; font-weight:700; color:var(--sage-deep); margin-bottom:14px; box-shadow:var(--shadow);}
+  .backup-link-btn{color:var(--ink-soft); font-weight:600; background:transparent; border:none; box-shadow:none; text-decoration:underline; text-underline-offset:3px; margin-top:4px;}
+  .compare-link-btn{margin-bottom:14px;}
   .stat-card{background:var(--card); border-radius:var(--radius-sm); padding:15px 16px; box-shadow:var(--shadow);}
   .stat-card .lab{font-size:12px; color:var(--ink-soft); font-weight:600; display:flex; align-items:center; gap:5px;}
   .stat-card .val{margin-top:7px; font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.01em;}
@@ -197,6 +208,31 @@
   .chart-card{background:var(--card); border-radius:var(--radius); padding:16px 14px 8px; box-shadow:var(--shadow); margin-bottom:16px;}
   .chart-card canvas{max-height:220px;}
   .empty-note{text-align:center; color:var(--ink-faint); font-size:13px; padding:34px 10px;}
+  .settings-note{font-size:12px; color:var(--ink-soft); line-height:1.6; margin:4px 0 16px;}
+
+  .report-head{background:linear-gradient(135deg,#3572EE,#0B3AA6); color:#fff; border-radius:16px; padding:20px; margin-bottom:16px;}
+  .report-head .rtitle{font-size:18px; font-weight:800;}
+  .report-head .rsub{font-size:12.5px; opacity:.85; margin-top:3px;}
+  .report-progress{display:flex; align-items:center; gap:14px; margin-top:14px;}
+  .report-progress .rp-num{font-size:26px; font-weight:800; font-variant-numeric:tabular-nums;}
+  .report-progress .rp-bar{flex:1; height:8px; background:rgba(255,255,255,.25); border-radius:100px; overflow:hidden;}
+  .report-progress .rp-bar-in{height:100%; background:#fff; border-radius:100px;}
+  .report-stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;}
+  .report-stats .rs-card{background:var(--bg); border-radius:12px; padding:12px 10px; text-align:center;}
+  .report-stats .rs-lab{font-size:11px; color:var(--ink-soft); font-weight:600;}
+  .report-stats .rs-val{font-size:15px; font-weight:800; margin-top:4px;}
+  .report-weeks{display:flex; flex-direction:column; gap:8px; margin-bottom:6px;}
+  .rw-row{display:flex; align-items:center; gap:10px; font-size:12.5px;}
+  .rw-row .rw-lab{width:44px; font-weight:700; color:var(--ink-soft); flex-shrink:0;}
+  .rw-row .rw-bar{flex:1; height:10px; background:var(--bg); border-radius:100px; overflow:hidden;}
+  .rw-row .rw-bar-in{height:100%; background:var(--sage); border-radius:100px;}
+  .rw-row .rw-count{width:38px; text-align:right; color:var(--ink-soft); flex-shrink:0;}
+
+  .cmp-table{width:100%; border-collapse:collapse; margin-top:10px;}
+  .cmp-table th{font-size:11px; color:var(--ink-soft); font-weight:600; text-align:right; padding:6px 4px;}
+  .cmp-table th:first-child{text-align:left;}
+  .cmp-table td{font-size:13px; font-weight:700; text-align:right; padding:9px 4px; border-top:1px solid var(--line); font-variant-numeric:tabular-nums;}
+  .cmp-table td:first-child{text-align:left; font-weight:600; color:var(--ink-soft);}
 
   .rec-item{background:var(--card); border-radius:16px; box-shadow:var(--shadow); margin-bottom:10px; overflow:hidden;}
   .rec-head{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; cursor:pointer;}
@@ -280,6 +316,17 @@
           <button class="fasting-btn" id="fastingBtn">단식 시작</button>
         </div>
 
+        <div class="streak-row">
+          <div class="streak-card">
+            <div class="streak-num" id="streakNum">0<span>일</span></div>
+            <div class="streak-lab">🔥 연속 기록</div>
+          </div>
+          <div class="streak-card">
+            <div class="streak-num" id="adherenceNum">–</div>
+            <div class="streak-lab" id="adherenceLab">이번 주 준수율</div>
+          </div>
+        </div>
+
         <div class="stat-grid">
           <div class="stat-card">
             <div class="lab">🔁 D-DAY</div>
@@ -303,7 +350,11 @@
           </div>
         </div>
 
+        <button class="report-link-btn" id="openReport">📊 4주 결산 리포트 보기</button>
+
         <div id="weeksWrap"></div>
+
+        <button class="backup-link-btn" id="openBackup">⚙️ 데이터 백업 / 복원</button>
       </div>
 
       <!-- ===================== INBODY PANE ===================== -->
@@ -312,6 +363,7 @@
           <h2>인바디 기록</h2>
           <button class="add-btn" id="openAddInbody">+ 새 기록 추가</button>
         </div>
+        <button class="compare-link-btn" id="openCompare">🔍 두 시점 비교하기</button>
 
         <div id="metricChips" style="margin-bottom:14px;"></div>
 
@@ -389,6 +441,39 @@
     <div class="field"><label>다리근육레벨</label><input id="ibLegMuscle" type="number" step="1"></div>
 
     <button class="primary-btn" id="saveInbody">저장</button>
+  </div>
+</div>
+
+<!-- ===== 4-week report sheet ===== -->
+<div class="overlay" id="ovReport">
+  <div class="sheet">
+    <div class="sheet-head"><h3>4주 결산 리포트</h3><button class="sheet-close" data-close="ovReport">✕</button></div>
+    <div id="reportBody"></div>
+    <button class="primary-btn" id="saveReportImg" style="margin-top:14px;">🖼️ 이미지로 저장</button>
+  </div>
+</div>
+
+<!-- ===== Backup / restore sheet ===== -->
+<div class="overlay" id="ovBackup">
+  <div class="sheet">
+    <div class="sheet-head"><h3>데이터 백업 / 복원</h3><button class="sheet-close" data-close="ovBackup">✕</button></div>
+    <p class="settings-note">기록·사진·인바디 데이터를 파일 하나로 내보내거나, 백업 파일로 복원할 수 있어요. 기기를 바꾸거나 브라우저 캐시를 지우기 전에 내보내기 해두는 걸 추천해요.</p>
+    <button class="primary-btn" id="exportBackupBtn">⬇️ 내보내기 (다운로드)</button>
+    <label class="primary-btn" for="importBackupInput" style="display:block; text-align:center; background:var(--card); border:1.5px solid var(--line); color:var(--ink-soft); margin-top:10px; cursor:pointer;">⬆️ 가져오기 (파일 선택)</label>
+    <input type="file" accept="application/json" id="importBackupInput" style="display:none;">
+    <div id="backupStatus" style="font-size:12px; color:var(--ink-soft); margin-top:10px; text-align:center;"></div>
+  </div>
+</div>
+
+<!-- ===== InBody two-point compare sheet ===== -->
+<div class="overlay" id="ovCompare">
+  <div class="sheet">
+    <div class="sheet-head"><h3>두 시점 비교</h3><button class="sheet-close" data-close="ovCompare">✕</button></div>
+    <div class="field-row">
+      <div class="field"><label>시점 A</label><select id="cmpA"></select></div>
+      <div class="field"><label>시점 B</label><select id="cmpB"></select></div>
+    </div>
+    <div id="compareResults"></div>
   </div>
 </div>
 
@@ -525,6 +610,71 @@ async function storageDelete(key){
   try{ localStorage.removeItem('switchon:'+key); }catch(e){}
 }
 
+/* ---------- 백업 내보내기 / 가져오기 ---------- */
+async function exportBackup(){
+  const backup = { version:1, exportedAt: new Date().toISOString(), days: DAYS, inbody: INBODY, weekFoods: WEEK_FOODS, fastingStart, photos:{}, inbodyPhotos:{} };
+  for(const [date, day] of Object.entries(DAYS)){
+    for(const [meal, m] of Object.entries(day.meals||{})){
+      if(m && m.hasPhoto){
+        const v = await getPhoto(`photo:${date}:${meal}`);
+        if(v) backup.photos[`photo:${date}:${meal}`] = v;
+      }
+    }
+    for(const ex of (day.exercise||[])){
+      if(ex.hasPhoto){
+        const v = await getPhoto(`exphoto:${date}:${ex.id}`);
+        if(v) backup.photos[`exphoto:${date}:${ex.id}`] = v;
+      }
+    }
+  }
+  for(const [date, rec] of Object.entries(INBODY)){
+    if(rec && rec.hasImage){
+      const v = await getPhoto(`inbodyPhoto:${date}`);
+      if(v) backup.inbodyPhotos[`inbodyPhoto:${date}`] = v;
+    }
+  }
+  const blob = new Blob([JSON.stringify(backup)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `switchon-backup-${todayStr()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+async function importBackup(file){
+  const statusEl = document.getElementById('backupStatus');
+  try{
+    const text = await file.text();
+    const backup = JSON.parse(text);
+    DAYS = backup.days || {};
+    INBODY = backup.inbody || {};
+    if(backup.weekFoods) WEEK_FOODS = backup.weekFoods;
+    await saveDays(); await saveInbody(); await saveWeekFoods();
+    if(backup.fastingStart){ fastingStart = backup.fastingStart; await storageSet('fastingStart', fastingStart); }
+    for(const [k,v] of Object.entries(backup.photos||{})) await setPhoto(k, v);
+    for(const [k,v] of Object.entries(backup.inbodyPhotos||{})) await setPhoto(k, v);
+    openWeek = null; selectedDate = {};
+    renderHero(); renderWeeks(); renderFasting();
+    statusEl.textContent = '복원 완료!';
+    toast('데이터를 복원했어요');
+  }catch(e){
+    statusEl.textContent = '복원 실패 — 올바른 백업 파일인지 확인해주세요';
+  }
+}
+document.getElementById('openBackup').addEventListener('click', ()=>{
+  document.getElementById('backupStatus').textContent = '';
+  showOverlay('ovBackup');
+});
+document.getElementById('exportBackupBtn').addEventListener('click', async ()=>{
+  const statusEl = document.getElementById('backupStatus');
+  statusEl.textContent = '내보내는 중...';
+  await exportBackup();
+  statusEl.textContent = '다운로드 완료!';
+});
+document.getElementById('importBackupInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(file) importBackup(file);
+});
+
 async function loadAll(){
   try{ const v = await storageGet('days'); DAYS = v ? JSON.parse(v) : {}; }catch(e){ DAYS = {}; }
   try{ const v = await storageGet('inbody'); INBODY = v ? JSON.parse(v) : {}; }catch(e){ INBODY = {}; }
@@ -584,7 +734,43 @@ function deltaLine(el, first, latest, unit, lowerIsGood){
   el.className = 'sub ' + (good ? 'delta-down' : 'delta-up');
 }
 
+function calcStreak(){
+  let d = todayStr();
+  if(d > END_DATE) d = END_DATE;
+  if(d < START_DATE) return 0;
+  if(!dayHasRecord(d)) d = addDays(d, -1);
+  let streak = 0;
+  while(d >= START_DATE){
+    if(dayHasRecord(d)){ streak++; d = addDays(d, -1); } else break;
+  }
+  return streak;
+}
+function currentWeekIndexForAdherence(){
+  const today = todayStr();
+  for(let i=0;i<4;i++){ if(weekStatus(WEEKS[i])==='active') return i; }
+  if(today < START_DATE) return null;
+  return 3;
+}
+function renderStreak(){
+  const streakEl = document.getElementById('streakNum');
+  const adhNumEl = document.getElementById('adherenceNum');
+  const adhLabEl = document.getElementById('adherenceLab');
+  if(!streakEl) return;
+  streakEl.innerHTML = `${calcStreak()}<span>일</span>`;
+  const wi = currentWeekIndexForAdherence();
+  if(wi === null){
+    adhNumEl.textContent = '–';
+    adhLabEl.textContent = '시작 전';
+    return;
+  }
+  const count = recordedCount(WEEKS[wi]);
+  const pct = Math.round(count/7*100);
+  adhNumEl.innerHTML = `${count}/7<span> (${pct}%)</span>`;
+  adhLabEl.textContent = `${wi+1}주차 준수율`;
+}
+
 function renderHero(){
+  renderStreak();
   const today = todayStr();
   let dayIdx, pct, ddayText, ddaySub;
   if(today < START_DATE){
@@ -627,6 +813,78 @@ function renderHero(){
   const muscleFirst = first.muscleMass!=null ? first.muscleMass : first.skeletal;
   if(muscleVal!=null && muscleFirst!=null) deltaLine(document.getElementById('statMuscleSub'), muscleFirst, muscleVal, 'kg', false);
 }
+
+/* ============================================================
+   4-WEEK REPORT
+============================================================ */
+function totalRecordedDays(){
+  return WEEKS.flat().filter(dayHasRecord).length;
+}
+function renderReport(){
+  const body = document.getElementById('reportBody');
+  const total = totalRecordedDays();
+  const pct = Math.round(total / TOTAL_DAYS * 100);
+  const fd = firstInbodyDate(), ld = latestInbodyDate();
+  const first = fd ? INBODY[fd] : null, latest = ld ? INBODY[ld] : null;
+
+  const statRow = (lab, unit, a, b, lowerGood) => {
+    if(a==null || b==null) return `<div class="rs-card"><div class="rs-lab">${lab}</div><div class="rs-val">–</div></div>`;
+    const diff = +(b - a).toFixed(1);
+    const sign = diff>0 ? '+' : '';
+    return `<div class="rs-card"><div class="rs-lab">${lab}</div><div class="rs-val">${sign}${diff}${unit}</div></div>`;
+  };
+
+  const weekBars = WEEKS.map((days, i)=>{
+    const c = recordedCount(days);
+    const p = Math.round(c/7*100);
+    return `<div class="rw-row"><div class="rw-lab">${i+1}주차</div><div class="rw-bar"><div class="rw-bar-in" style="width:${p}%"></div></div><div class="rw-count">${c}/7</div></div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div id="reportCapture">
+      <div class="report-head">
+        <div class="rtitle">2026 스위치온 · 4주 결산</div>
+        <div class="rsub">${START_DATE.slice(5).replace('-','.')} – ${END_DATE.slice(5).replace('-','.')}</div>
+        <div class="report-progress">
+          <div class="rp-num">${total}/${TOTAL_DAYS}일</div>
+          <div class="rp-bar"><div class="rp-bar-in" style="width:${pct}%"></div></div>
+          <div class="rp-num">${pct}%</div>
+        </div>
+      </div>
+      <div class="report-stats">
+        ${statRow('체중', 'kg', first&&first.weight, latest&&latest.weight, true)}
+        ${statRow('체지방률', '%', first&&first.fatPct, latest&&latest.fatPct, true)}
+        ${statRow('골격근량', 'kg', first&&first.skeletal, latest&&latest.skeletal, false)}
+      </div>
+      <div class="report-weeks">${weekBars}</div>
+    </div>
+  `;
+}
+function openReportSheet(){
+  renderReport();
+  showOverlay('ovReport');
+}
+document.getElementById('openReport').addEventListener('click', openReportSheet);
+document.getElementById('saveReportImg').addEventListener('click', async ()=>{
+  const btn = document.getElementById('saveReportImg');
+  if(typeof html2canvas === 'undefined'){ toast('이미지 저장 기능을 불러오지 못했어요'); return; }
+  btn.textContent = '저장 중...'; btn.disabled = true;
+  try{
+    const target = document.getElementById('reportCapture');
+    const canvas = await html2canvas(target, { backgroundColor:'#ffffff', scale:2 });
+    canvas.toBlob((blob)=>{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `switchon-report-${todayStr()}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+  }catch(e){
+    toast('이미지 저장에 실패했어요');
+  }finally{
+    btn.textContent = '🖼️ 이미지로 저장'; btn.disabled = false;
+  }
+});
 
 /* ============================================================
    RENDER: WEEKS
@@ -1108,6 +1366,51 @@ function renderInbodyAll(){
   renderRecList();
   renderHero();
 }
+
+/* ---------- 두 시점 비교 ---------- */
+function populateCompareSelects(){
+  const dates = Object.keys(INBODY).sort();
+  const selA = document.getElementById('cmpA'), selB = document.getElementById('cmpB');
+  const opts = dates.map(d=>`<option value="${d}">${fmtMD(d)} (${dowLabel(d)})</option>`).join('');
+  selA.innerHTML = opts; selB.innerHTML = opts;
+  if(dates.length){ selA.value = dates[0]; selB.value = dates[dates.length-1]; }
+  return dates;
+}
+function renderCompareResults(){
+  const a = document.getElementById('cmpA').value, b = document.getElementById('cmpB').value;
+  const wrap = document.getElementById('compareResults');
+  if(!a || !b || !INBODY[a] || !INBODY[b]){
+    wrap.innerHTML = `<div class="empty-note">비교할 기록이 부족해요.</div>`;
+    return;
+  }
+  const recA = INBODY[a], recB = INBODY[b];
+  const rows = METRIC_DEFS.map(m=>{
+    const va = recA[m.key], vb = recB[m.key];
+    let deltaText = '–';
+    if(va!=null && vb!=null){
+      const diff = +(vb-va).toFixed(2);
+      const sign = diff>0 ? '+' : '';
+      deltaText = `${sign}${diff}`;
+    }
+    return `<tr><td>${m.label}</td><td>${va??'-'}${m.unit}</td><td>${vb??'-'}${m.unit}</td><td>${deltaText}${m.unit}</td></tr>`;
+  }).join('');
+  wrap.innerHTML = `
+    <table class="cmp-table">
+      <thead><tr><th>항목</th><th>A</th><th>B</th><th>변화</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+document.getElementById('openCompare').addEventListener('click', ()=>{
+  const dates = populateCompareSelects();
+  if(dates.length < 1){
+    document.getElementById('compareResults').innerHTML = `<div class="empty-note">인바디 기록을 먼저 추가해주세요.</div>`;
+  } else {
+    renderCompareResults();
+  }
+  showOverlay('ovCompare');
+});
+document.getElementById('cmpA').addEventListener('change', renderCompareResults);
+document.getElementById('cmpB').addEventListener('change', renderCompareResults);
 
 /* ---------- inbody add/edit sheet ---------- */
 function resetInbodyForm(){
