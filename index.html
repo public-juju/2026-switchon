@@ -871,7 +871,7 @@ document.getElementById('saveReportImg').addEventListener('click', async ()=>{
   btn.textContent = '저장 중...'; btn.disabled = true;
   try{
     const target = document.getElementById('reportCapture');
-    const canvas = await html2canvas(target, { backgroundColor:'#ffffff', scale:2 });
+    const canvas = await html2canvas(target, { backgroundColor:null, scale:2 });
     canvas.toBlob((blob)=>{
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
