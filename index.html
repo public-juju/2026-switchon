@@ -486,8 +486,8 @@
 const START_DATE = '2026-08-16';
 const END_DATE   = '2026-09-12';
 const TOTAL_DAYS = 28;
-const HOME_DAYS = new Set(['2026-08-16','2026-08-20','2026-08-21','2026-08-28','2026-08-30','2026-09-02','2026-09-03','2026-09-10','2026-09-12']);
-const DINE_DAYS = new Set(['2026-08-27','2026-08-29']);
+const HOME_DAYS = new Set(['2026-08-14','2026-08-18','2026-08-19','2026-08-26','2026-08-28','2026-08-31','2026-09-01','2026-09-08','2026-09-10']);
+const DINE_DAYS = new Set(['2026-08-25','2026-08-27']);
 const DOW = ['일','월','화','수','목','금','토'];
 const MEALS = [['breakfast','아침'],['lunch','점심'],['snack','간식'],['dinner','저녁']];
 
@@ -506,19 +506,19 @@ const BASE_DIET = [
     snack:     ['단백질쉐이크','단백질쉐이크','단백질쉐이크','단백질쉐이크','단백질쉐이크','단백질쉐이크','단백질쉐이크'],
     dinner:    ['단백질쉐이크','단백질쉐이크','단백질쉐이크','단백질쉐이크','단백질쉐이크','단백질쉐이크','단백질쉐이크'],
   },
-  { // 2주차 (금,토,일,월,화,수,목 = 23,24,25,26,27,28,29)
+  { // 2주차 (금,토,일,월,화,수,목 = 21,22,23,24,25,26,27)
     breakfast: ['단백질쉐이크','단백질쉐이크','단백질쉐이크','단식','단백질쉐이크','단백질쉐이크','단백질쉐이크'],
     lunch:     ['저탄수식','저탄수식','저탄수식','저탄수식','저탄수식','저탄수식','저탄수식'],
     snack:     ['단백질쉐이크','단백질쉐이크','단식','단백질쉐이크','단백질쉐이크','단백질쉐이크','단백질쉐이크'],
     dinner:    ['무탄수식','무탄수식','단식','무탄수식','무탄수식','무탄수식','무탄수식'],
   },
-  { // 3주차 (금,토,일,월,화,수,목 = 30,31,9/1,9/2,9/3,9/4,9/5) · 단식 시작일: 1주차 대비 3주차 첫날·넷째날 (간식·저녁 + 다음날 아침)
+  { // 3주차 (금,토,일,월,화,수,목 = 28,29,30,31,9/1,9/2,9/3) · 단식 시작일: 28일, 31일 (간식·저녁 + 다음날 아침)
     breakfast: ['단백질쉐이크','단식','단백질쉐이크','단백질쉐이크','단식','단백질쉐이크','단백질쉐이크'],
     lunch:     ['저탄수식','저탄수식','저탄수식','저탄수식','저탄수식','저탄수식','저탄수식'],
     snack:     ['단식','단백질쉐이크','단백질쉐이크','단식','단백질쉐이크','단백질쉐이크','단백질쉐이크'],
     dinner:    ['단식','무탄수식','무탄수식','단식','무탄수식','무탄수식','무탄수식'],
   },
-  { // 4주차 (금,토,일,월,화,수,목 = 9/6,9/7,9/8,9/9,9/10,9/11,9/12 · 마지막 날은 '편하게 식사')
+  { // 4주차 (금,토,일,월,화,수,목 = 9/4,9/5,9/6,9/7,9/8,9/9,9/10 · 마지막 날은 '편하게 식사')
     breakfast: ['단백질쉐이크','단백질쉐이크','단식','단백질쉐이크','단식','단백질쉐이크','편하게 식사'],
     lunch:     ['일반식','일반식','일반식','일반식','일반식','일반식','편하게 식사'],
     snack:     ['단백질쉐이크','단식','단백질쉐이크','단식','단백질쉐이크','단식','편하게 식사'],
@@ -529,12 +529,25 @@ const DIET_CLASS = {
   '단백질쉐이크':'diet-shake', '저탄수식':'diet-lowcarb', '무탄수식':'diet-nocarb',
   '단식':'diet-fast', '일반식':'diet-normal', '편하게 식사':'diet-free',
 };
-function getBaseDiet(wi, dayIdx, mealKey){
+/* 식단표는 처음 설계된 8/14 기준 요일 자리에 고정돼 있어서, 프로그램 시작일(START_DATE)이
+   바뀌어도 재택/회식과 마찬가지로 실제 달력 날짜 기준으로 그대로 찾아온다. */
+const SCHEDULE_ANCHOR = '2026-08-14';
+function dateOffset(date){
+  const [y1,m1,d1] = SCHEDULE_ANCHOR.split('-').map(Number);
+  const [y2,m2,d2] = date.split('-').map(Number);
+  const t1 = Date.UTC(y1,m1-1,d1), t2 = Date.UTC(y2,m2-1,d2);
+  return Math.round((t2-t1)/86400000);
+}
+function getBaseDietByDate(date, mealKey){
+  let offset = dateOffset(date);
+  if(offset < 0) offset = 0;
+  if(offset > 27) offset = 27; // 원래 식단표 마지막 날(편하게 식사) 패턴을 그대로 반복
+  const wi = Math.floor(offset/7), dayIdx = offset%7;
   const w = BASE_DIET[wi];
   return w && w[mealKey] ? w[mealKey][dayIdx] : '';
 }
-function isFullFastDay(wi, dayIdx){
-  return getBaseDiet(wi, dayIdx, 'snack') === '단식' && getBaseDiet(wi, dayIdx, 'dinner') === '단식';
+function isFullFastDay(date){
+  return getBaseDietByDate(date, 'snack') === '단식' && getBaseDietByDate(date, 'dinner') === '단식';
 }
 
 function addDays(dateStr, n){
@@ -947,7 +960,7 @@ function renderWeekBody(wi){
     const badges = [];
     if(HOME_DAYS.has(d)) badges.push('<span class="home-tag">재택</span>');
     if(DINE_DAYS.has(d)) badges.push('<span class="dine-tag">회식</span>');
-    if(isFullFastDay(wi, di)) badges.push('<span class="fastday-tag">단식</span>');
+    if(isFullFastDay(d)) badges.push('<span class="fastday-tag">단식</span>');
     return `
       <div class="daychip">
         <div class="home-slot">${badges.join('')}</div>
@@ -985,7 +998,6 @@ async function renderDayDetail(wi){
   const box = document.getElementById(`dayDetail-${wi}`);
   if(!box) return;
   const day = ensureDay(date);
-  const dayIdx = WEEKS[wi].indexOf(date);
 
   box.innerHTML = `
     <div class="day-detail-title">📅 ${fmtMD(date)} (${dowLabel(date)}) ${HOME_DAYS.has(date)?'· <span style=\"color:var(--dusk);font-weight:700;\">재택</span>':''}</div>
@@ -1001,7 +1013,7 @@ async function renderDayDetail(wi){
   const grid = document.getElementById(`mealGrid-${wi}`);
   for(const [key, label] of MEALS){
     const m = day.meals[key] || {};
-    const dietLabel = getBaseDiet(wi, dayIdx, key);
+    const dietLabel = getBaseDietByDate(date, key);
     const dietCls = DIET_CLASS[dietLabel] || 'diet-normal';
     const cell = document.createElement('div');
     cell.className = 'meal-box';
