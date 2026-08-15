@@ -189,13 +189,13 @@
   .water-extra{border:none; background:none; color:var(--ink-soft); font-size:11.5px; font-weight:600; padding:4px 6px;
     text-decoration:underline; text-underline-offset:2px;}
 
-  .sleep-row{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
-  .sleep-input{width:90px; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:14px; outline:none; background:var(--bg);}
-  .sleep-input:focus{border-color:var(--sage);}
-  .sleep-unit{font-size:13px; color:var(--ink-soft); font-weight:600;}
-  .sleep-presets{display:flex; gap:6px; flex-wrap:wrap;}
-  .sleep-preset{border:1.5px solid var(--line); background:var(--card); border-radius:100px; padding:6px 12px; font-size:12px; font-weight:700; color:var(--ink-soft);}
-  .sleep-preset.active{border-color:var(--dusk); background:var(--dusk-soft); color:var(--dusk);}
+  .sleep-row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .sleep-field{flex:1;}
+  .sleep-field label{display:block; font-size:11px; color:var(--ink-soft); font-weight:600; margin-bottom:4px;}
+  .sleep-field input{width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:14px; outline:none; background:var(--bg);}
+  .sleep-field input:focus{border-color:var(--sage);}
+  .sleep-arrow{color:var(--ink-faint); font-size:14px; margin-top:14px;}
+  .sleep-result{font-size:13px; font-weight:700; color:var(--dusk); background:var(--dusk-soft); border-radius:12px; padding:10px 14px; text-align:center;}
 
   .memo-box{width:100%; border:1px solid var(--line); border-radius:14px; padding:13px 14px; font-size:13.5px;
     resize:none; min-height:56px; outline:none; background:var(--bg);}
@@ -726,6 +726,8 @@ function ensureDay(date){
   if(!DAYS[date].exercise) DAYS[date].exercise = [];
   if(DAYS[date].water == null) DAYS[date].water = 0;
   if(DAYS[date].sleep === undefined) DAYS[date].sleep = null;
+  if(DAYS[date].sleepBed === undefined) DAYS[date].sleepBed = null;
+  if(DAYS[date].sleepWake === undefined) DAYS[date].sleepWake = null;
   return DAYS[date];
 }
 function dayHasRecord(date){
@@ -1030,10 +1032,11 @@ async function renderDayDetail(wi){
     <div class="water-cups" id="waterCups-${wi}"></div>
     <div class="section-label">😴 수면 시간</div>
     <div class="sleep-row">
-      <input type="number" step="0.5" min="0" max="24" class="sleep-input" id="sleepInput-${wi}" placeholder="예: 7.5" value="${day.sleep ?? ''}">
-      <span class="sleep-unit">시간</span>
+      <div class="sleep-field"><label>취침 시간</label><input type="time" id="sleepBed-${wi}" value="${day.sleepBed||''}"></div>
+      <span class="sleep-arrow">→</span>
+      <div class="sleep-field"><label>기상 시간</label><input type="time" id="sleepWake-${wi}" value="${day.sleepWake||''}"></div>
     </div>
-    <div class="sleep-presets" id="sleepPresets-${wi}"></div>
+    <div class="sleep-result" id="sleepResult-${wi}"></div>
     <div class="section-label">📝 메모</div>
     <textarea class="memo-box" id="memoBox-${wi}" placeholder="오늘 하루 메모를 남겨보세요">${day.memo||''}</textarea>
   `;
@@ -1060,29 +1063,36 @@ async function renderDayDetail(wi){
   });
   cupsWrap.appendChild(extraBtn);
 
-  const sleepInput = document.getElementById(`sleepInput-${wi}`);
-  let sleepTimer;
-  sleepInput.addEventListener('input', ()=>{
-    clearTimeout(sleepTimer);
-    sleepTimer = setTimeout(async ()=>{
-      const v = sleepInput.value;
-      day.sleep = v === '' ? null : parseFloat(v);
-      await saveDays();
-      renderWeeks();
-    }, 500);
-  });
-  const presetWrap = document.getElementById(`sleepPresets-${wi}`);
-  [5,6,7,8,9].forEach(h=>{
-    const btn = document.createElement('button');
-    btn.className = 'sleep-preset' + (day.sleep===h ? ' active' : '');
-    btn.textContent = `${h}시간`;
-    btn.addEventListener('click', async ()=>{
-      day.sleep = h;
-      await saveDays();
-      renderDayDetail(wi); renderWeeks();
-    });
-    presetWrap.appendChild(btn);
-  });
+  function calcSleepHours(bed, wake){
+    if(!bed || !wake) return null;
+    const [bh,bm] = bed.split(':').map(Number);
+    const [wh,wm] = wake.split(':').map(Number);
+    let mins = (wh*60+wm) - (bh*60+bm);
+    if(mins <= 0) mins += 24*60; // 자정을 넘겨 자는 경우
+    return Math.round((mins/60)*10)/10;
+  }
+  function renderSleepResult(){
+    const resEl = document.getElementById(`sleepResult-${wi}`);
+    if(day.sleep!=null){
+      const h = Math.floor(day.sleep), m = Math.round((day.sleep - h)*60);
+      resEl.textContent = `${h}시간 ${m > 0 ? m+'분 ' : ''}잤어요`;
+    } else {
+      resEl.textContent = '취침·기상 시간을 입력하면 자동으로 계산돼요';
+    }
+  }
+  renderSleepResult();
+  const bedInput = document.getElementById(`sleepBed-${wi}`);
+  const wakeInput = document.getElementById(`sleepWake-${wi}`);
+  async function onSleepTimeChange(){
+    day.sleepBed = bedInput.value || null;
+    day.sleepWake = wakeInput.value || null;
+    day.sleep = calcSleepHours(day.sleepBed, day.sleepWake);
+    await saveDays();
+    renderSleepResult();
+    renderWeeks();
+  }
+  bedInput.addEventListener('change', onSleepTimeChange);
+  wakeInput.addEventListener('change', onSleepTimeChange);
 
   const grid = document.getElementById(`mealGrid-${wi}`);
   for(const [key, label] of MEALS){
