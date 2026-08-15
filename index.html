@@ -498,6 +498,7 @@ const HOME_DAYS = new Set(['2026-08-14','2026-08-18','2026-08-19','2026-08-26','
 const DINE_DAYS = new Set(['2026-08-25','2026-08-27']);
 const DOW = ['일','월','화','수','목','금','토'];
 const MEALS = [['breakfast','아침'],['lunch','점심'],['snack','간식'],['dinner','저녁']];
+const WATER_ML_PER_CUP = 250;
 
 const DEFAULT_WEEK_FOODS = {
   1: "간장, 강황, 고추냉이, 고춧가루, 냉압착 들기름, 녹차, 아보카도, 양배추, 달걀, 닭고기, 당근, 두부, 마늘, 무, 잡곡밥, 현미밥, 코코넛오일, 버섯, 브로콜리, 생선류, 회, 수육, 식초, 후추, 양파, 연두부, 올리브오일, 오이, 플레인요거트, 해산물, 해조류, 허브티",
@@ -1016,7 +1017,7 @@ async function renderDayDetail(wi){
     <div class="section-label">🏋️ EXERCISE</div>
     <div class="ex-list" id="exList-${wi}"></div>
     <button class="add-ex-btn" id="addExBtn-${wi}" style="margin-top:8px;">+ 운동 기록 추가</button>
-    <div class="section-label">💧 물 섭취 <span class="water-total" id="waterTotal-${wi}">${day.water||0}/8잔</span></div>
+    <div class="section-label">💧 물 섭취 <span class="water-total" id="waterTotal-${wi}">${day.water||0}/8잔 · ${(day.water||0)*WATER_ML_PER_CUP}ml</span></div>
     <div class="water-cups" id="waterCups-${wi}"></div>
     <div class="section-label">📝 메모</div>
     <textarea class="memo-box" id="memoBox-${wi}" placeholder="오늘 하루 메모를 남겨보세요">${day.memo||''}</textarea>
