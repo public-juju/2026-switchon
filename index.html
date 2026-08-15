@@ -181,6 +181,14 @@
   .add-ex-btn{width:100%; border:1.5px dashed #c9c0ea; background:var(--lavender-soft); border-radius:14px; padding:12px;
     color:var(--lavender); font-weight:700; font-size:13.5px; display:flex; align-items:center; justify-content:center; gap:6px;}
 
+  .water-total{font-size:12px; font-weight:700; color:var(--sage-deep); margin-left:4px;}
+  .water-cups{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  .water-cup{width:36px; height:36px; border-radius:50%; border:1.5px solid var(--line); background:var(--bg);
+    font-size:16px; opacity:.35; filter:grayscale(1); display:flex; align-items:center; justify-content:center;}
+  .water-cup.filled{opacity:1; filter:none; background:var(--dusk-soft); border-color:var(--dusk);}
+  .water-extra{border:none; background:none; color:var(--ink-soft); font-size:11.5px; font-weight:600; padding:4px 6px;
+    text-decoration:underline; text-underline-offset:2px;}
+
   .memo-box{width:100%; border:1px solid var(--line); border-radius:14px; padding:13px 14px; font-size:13.5px;
     resize:none; min-height:56px; outline:none; background:var(--bg);}
   .memo-box:focus{border-color:var(--sage);}
@@ -703,10 +711,11 @@ async function setPhoto(key, dataUrl){ const ok = await storageSet(key, dataUrl)
 async function delPhoto(key){ await storageDelete(key); }
 
 function ensureDay(date){
-  if(!DAYS[date]) DAYS[date] = { meals:{breakfast:{},lunch:{},snack:{},dinner:{}}, exercise:[], memo:'' };
+  if(!DAYS[date]) DAYS[date] = { meals:{breakfast:{},lunch:{},snack:{},dinner:{}}, exercise:[], memo:'', water:0 };
   if(!DAYS[date].meals) DAYS[date].meals = {breakfast:{},lunch:{},snack:{},dinner:{}};
   MEALS.forEach(([k])=>{ if(!DAYS[date].meals[k]) DAYS[date].meals[k] = {}; });
   if(!DAYS[date].exercise) DAYS[date].exercise = [];
+  if(DAYS[date].water == null) DAYS[date].water = 0;
   return DAYS[date];
 }
 function dayHasRecord(date){
@@ -1007,10 +1016,33 @@ async function renderDayDetail(wi){
     <div class="section-label">🏋️ EXERCISE</div>
     <div class="ex-list" id="exList-${wi}"></div>
     <button class="add-ex-btn" id="addExBtn-${wi}" style="margin-top:8px;">+ 운동 기록 추가</button>
+    <div class="section-label">💧 물 섭취 <span class="water-total" id="waterTotal-${wi}">${day.water||0}/8잔</span></div>
+    <div class="water-cups" id="waterCups-${wi}"></div>
     <div class="section-label">📝 메모</div>
     <textarea class="memo-box" id="memoBox-${wi}" placeholder="오늘 하루 메모를 남겨보세요">${day.memo||''}</textarea>
   `;
 
+  const cupsWrap = document.getElementById(`waterCups-${wi}`);
+  for(let i=1;i<=8;i++){
+    const cup = document.createElement('button');
+    cup.className = 'water-cup' + (i <= (day.water||0) ? ' filled' : '');
+    cup.textContent = '💧';
+    cup.addEventListener('click', async ()=>{
+      day.water = (day.water === i) ? i-1 : i;
+      await saveDays();
+      renderDayDetail(wi); renderWeeks();
+    });
+    cupsWrap.appendChild(cup);
+  }
+  const extraBtn = document.createElement('button');
+  extraBtn.className = 'water-extra';
+  extraBtn.textContent = '+1잔 더';
+  extraBtn.addEventListener('click', async ()=>{
+    day.water = (day.water||0) + 1;
+    await saveDays();
+    renderDayDetail(wi); renderWeeks();
+  });
+  cupsWrap.appendChild(extraBtn);
   const grid = document.getElementById(`mealGrid-${wi}`);
   for(const [key, label] of MEALS){
     const m = day.meals[key] || {};
