@@ -165,7 +165,12 @@
     display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;}
   .meal-photo img{width:100%; height:100%; object-fit:cover; position:absolute; inset:0; z-index:2; cursor:zoom-in;}
   .meal-photo .plus{font-size:24px; color:var(--sage); font-weight:300;}
-  .meal-photo input[type=file]{position:absolute; inset:0; opacity:0; cursor:pointer; z-index:1;}
+  .meal-photo .meal-file-main{position:absolute; inset:0; opacity:0; cursor:pointer; z-index:1;}
+  .meal-photo .meal-file-add{position:absolute; bottom:3px; left:3px; width:20px; height:20px; opacity:0; cursor:pointer; z-index:4;}
+  .meal-photo .addmore-badge{position:absolute; bottom:3px; left:3px; width:20px; height:20px; border-radius:50%;
+    background:rgba(0,0,0,.55); color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center; z-index:3; pointer-events:none;}
+  .meal-photo .photo-count{position:absolute; top:3px; left:3px; background:rgba(0,0,0,.55); color:#fff; font-size:9px; font-weight:700;
+    padding:2px 6px; border-radius:100px; z-index:3; pointer-events:none;}
   .meal-photo .rm{position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,.55);
     color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; border:none; z-index:3;}
   .meal-name{font-size:12.5px; font-weight:700;}
@@ -296,9 +301,18 @@
   .lightbox{position:fixed; inset:0; background:rgba(10,14,20,.92); z-index:300; display:none;
     align-items:center; justify-content:center; padding:24px;}
   .lightbox.show{display:flex;}
-  .lightbox img{max-width:100%; max-height:100%; border-radius:14px; object-fit:contain;}
+  .lightbox img{max-width:100%; max-height:80%; border-radius:14px; object-fit:contain;}
   .lightbox-close{position:absolute; top:18px; right:18px; width:36px; height:36px; border-radius:50%;
-    background:rgba(255,255,255,.15); color:#fff; border:none; font-size:18px; display:flex; align-items:center; justify-content:center;}
+    background:rgba(255,255,255,.15); color:#fff; border:none; font-size:18px; display:flex; align-items:center; justify-content:center; z-index:2;}
+  .lightbox-del{position:absolute; top:18px; right:64px; width:36px; height:36px; border-radius:50%;
+    background:rgba(255,255,255,.15); color:#fff; border:none; font-size:15px; display:flex; align-items:center; justify-content:center; z-index:2;}
+  .lightbox-nav{position:absolute; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:50%;
+    background:rgba(255,255,255,.15); color:#fff; border:none; font-size:26px; display:flex; align-items:center; justify-content:center; z-index:2;}
+  .lightbox-prev{left:10px;}
+  .lightbox-next{right:10px;}
+  .lightbox-dots{position:absolute; bottom:24px; left:0; right:0; display:flex; justify-content:center; gap:6px;}
+  .lb-dot{width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.35);}
+  .lb-dot.active{background:#fff;}
 
   .toast{position:fixed; bottom:96px; left:50%; transform:translateX(-50%); background:var(--sage-deep); color:#fff; font-size:13px; font-weight:600;
     padding:10px 18px; border-radius:100px; z-index:200; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;}
@@ -502,7 +516,11 @@
 
 <div class="lightbox" id="lightbox">
   <button class="lightbox-close" id="lightboxClose">✕</button>
+  <button class="lightbox-del" id="lightboxDel" style="display:none;">🗑</button>
+  <button class="lightbox-nav lightbox-prev" id="lightboxPrev" style="display:none;">‹</button>
   <img id="lightboxImg" src="">
+  <button class="lightbox-nav lightbox-next" id="lightboxNext" style="display:none;">›</button>
+  <div class="lightbox-dots" id="lightboxDots"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -658,7 +676,12 @@ async function exportBackup(){
   const backup = { version:1, exportedAt: new Date().toISOString(), days: DAYS, inbody: INBODY, weekFoods: WEEK_FOODS, fastingStart, photos:{}, inbodyPhotos:{} };
   for(const [date, day] of Object.entries(DAYS)){
     for(const [meal, m] of Object.entries(day.meals||{})){
-      if(m && m.hasPhoto){
+      if(m && Array.isArray(m.photos)){
+        for(const p of m.photos){
+          const v = await getPhoto(mealPhotoKey(date, meal, p.id));
+          if(v) backup.photos[mealPhotoKey(date, meal, p.id)] = v;
+        }
+      } else if(m && m.hasPhoto){
         const v = await getPhoto(`photo:${date}:${meal}`);
         if(v) backup.photos[`photo:${date}:${meal}`] = v;
       }
@@ -734,7 +757,13 @@ async function delPhoto(key){ await storageDelete(key); }
 function ensureDay(date){
   if(!DAYS[date]) DAYS[date] = { meals:{breakfast:{},lunch:{},snack:{},dinner:{}}, exercise:[], memo:'', water:0 };
   if(!DAYS[date].meals) DAYS[date].meals = {breakfast:{},lunch:{},snack:{},dinner:{}};
-  MEALS.forEach(([k])=>{ if(!DAYS[date].meals[k]) DAYS[date].meals[k] = {}; });
+  MEALS.forEach(([k])=>{
+    if(!DAYS[date].meals[k]) DAYS[date].meals[k] = {};
+    const m = DAYS[date].meals[k];
+    if(!Array.isArray(m.photos)){
+      m.photos = m.hasPhoto ? [{id:'', time:m.time||null}] : [];
+    }
+  });
   if(!DAYS[date].exercise) DAYS[date].exercise = [];
   if(DAYS[date].water == null) DAYS[date].water = 0;
   if(DAYS[date].sleep === undefined) DAYS[date].sleep = null;
@@ -742,10 +771,13 @@ function ensureDay(date){
   if(DAYS[date].sleepWake === undefined) DAYS[date].sleepWake = null;
   return DAYS[date];
 }
+function mealPhotoKey(date, meal, id){
+  return id ? `photo:${date}:${meal}:${id}` : `photo:${date}:${meal}`;
+}
 function dayHasRecord(date){
   const d = DAYS[date];
   if(!d) return false;
-  const hasMeal = MEALS.some(([k]) => d.meals && d.meals[k] && d.meals[k].hasPhoto);
+  const hasMeal = MEALS.some(([k]) => d.meals && d.meals[k] && ((d.meals[k].photos && d.meals[k].photos.length) || d.meals[k].hasPhoto));
   return hasMeal || (d.exercise && d.exercise.length>0) || (d.memo && d.memo.trim().length>0);
 }
 
@@ -1108,46 +1140,55 @@ async function renderDayDetail(wi){
 
   const grid = document.getElementById(`mealGrid-${wi}`);
   for(const [key, label] of MEALS){
-    const m = day.meals[key] || {};
+    const m = day.meals[key] || {photos:[]};
+    const photos = m.photos || [];
+    const hasPhoto = photos.length > 0;
     const dietLabel = getBaseDietByDate(date, key);
     const dietCls = DIET_CLASS[dietLabel] || 'diet-normal';
     const cell = document.createElement('div');
     cell.className = 'meal-box';
     cell.innerHTML = `
       <div class="meal-photo" aria-label="${label} 사진 업로드">
-        <span class="plus">${m.hasPhoto ? '' : '+'}</span>
-        <input type="file" accept="image/*" data-meal="${key}" data-date="${date}">
-        ${m.hasPhoto ? `<button class="rm" data-rm="${key}" data-date="${date}">✕</button>` : ''}
+        <span class="plus">${hasPhoto ? '' : '+'}</span>
+        ${!hasPhoto ? `<input type="file" accept="image/*" multiple data-meal="${key}" data-date="${date}" class="meal-file-main">` : ''}
+        ${hasPhoto ? `<button class="rm" data-rm="${key}" data-date="${date}">✕</button>` : ''}
+        ${hasPhoto && photos.length>1 ? `<span class="photo-count">${photos.length}장</span>` : ''}
+        ${hasPhoto ? `
+          <input type="file" accept="image/*" multiple data-meal="${key}" data-date="${date}" class="meal-file-add">
+          <span class="addmore-badge">+</span>
+        ` : ''}
       </div>
       <span class="meal-name">${label}</span>
       ${dietLabel ? `<span class="diet-tag ${dietCls}">${dietLabel}</span>` : ''}
-      ${m.hasPhoto && m.time ? `<span class="meal-time">${m.time}</span>` : ''}
+      ${hasPhoto && photos[0].time ? `<span class="meal-time">${photos[0].time}</span>` : ''}
     `;
     grid.appendChild(cell);
-    if(m.hasPhoto){
-      getPhoto(`photo:${date}:${key}`).then(url=>{
-        if(url){
+    if(hasPhoto){
+      Promise.all(photos.map(p => getPhoto(mealPhotoKey(date, key, p.id)))).then(urls=>{
+        const validUrls = urls.filter(Boolean);
+        if(validUrls.length){
           const btn = cell.querySelector('.meal-photo');
           const span = btn.querySelector('.plus');
-          span.outerHTML = `<img src="${url}">`;
+          span.outerHTML = `<img src="${validUrls[0]}">`;
           btn.querySelector('img').addEventListener('click', (e)=>{
             e.stopPropagation();
-            openLightbox(url);
+            openLightbox(validUrls, 0, (idx)=> deleteMealPhoto(date, key, wi, idx));
           });
         }
       });
     }
   }
-  grid.querySelectorAll('.meal-photo input[type=file]').forEach(input=>{
+  grid.querySelectorAll('.meal-file-main, .meal-file-add').forEach(input=>{
     input.addEventListener('change', ()=> handleMealFile(input, wi));
   });
   grid.querySelectorAll('.rm').forEach(rm=>{
     rm.addEventListener('click', async (e)=>{
       e.stopPropagation();
       const date = rm.dataset.date, meal = rm.dataset.rm;
-      day.meals[meal] = {};
+      const photos = (day.meals[meal] && day.meals[meal].photos) || [];
+      for(const p of photos) await delPhoto(mealPhotoKey(date, meal, p.id));
+      day.meals[meal] = {photos:[]};
       await saveDays();
-      await delPhoto(`photo:${date}:${meal}`);
       renderDayDetail(wi); renderWeeks();
     });
   });
@@ -1200,10 +1241,7 @@ async function renderDayDetail(wi){
 }
 
 /* ---------- meal photo upload ---------- */
-async function handleMealFile(input, wi){
-  const file = input.files[0];
-  if(!file) return;
-  const date = input.dataset.date, meal = input.dataset.meal;
+async function extractExifTime(file){
   let timeStr = null;
   await new Promise(resolve=>{
     try{
@@ -1221,13 +1259,32 @@ async function handleMealFile(input, wi){
     const now = new Date();
     timeStr = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   }
-  const dataUrl = await resizeImage(file, 640, 0.62);
+  return timeStr;
+}
+async function handleMealFile(input, wi){
+  const files = Array.from(input.files || []);
+  if(files.length === 0) return;
+  const date = input.dataset.date, meal = input.dataset.meal;
   const day = ensureDay(date);
-  day.meals[meal] = { hasPhoto:true, time:timeStr };
+  if(!Array.isArray(day.meals[meal].photos)) day.meals[meal].photos = [];
+  for(const file of files){
+    const timeStr = await extractExifTime(file);
+    const dataUrl = await resizeImage(file, 640, 0.62);
+    const id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    day.meals[meal].photos.push({id, time: timeStr});
+    await setPhoto(mealPhotoKey(date, meal, id), dataUrl);
+  }
   await saveDays();
-  await setPhoto(`photo:${date}:${meal}`, dataUrl);
   renderDayDetail(wi); renderWeeks();
-  toast('사진이 저장됐어요');
+  toast(files.length>1 ? `사진 ${files.length}장이 저장됐어요` : '사진이 저장됐어요');
+}
+async function deleteMealPhoto(date, meal, wi, idx){
+  const day = ensureDay(date);
+  const photos = day.meals[meal].photos || [];
+  const removed = photos.splice(idx, 1)[0];
+  if(removed) await delPhoto(mealPhotoKey(date, meal, removed.id));
+  await saveDays();
+  renderDayDetail(wi); renderWeeks();
 }
 
 function resizeImage(file, maxW, quality){
@@ -1299,17 +1356,63 @@ document.getElementById('saveEx').addEventListener('click', async ()=>{
 function showOverlay(id){ document.getElementById(id).classList.add('show'); }
 function hideOverlay(id){ document.getElementById(id).classList.remove('show'); }
 
-function openLightbox(src){
-  if(!src) return;
-  document.getElementById('lightboxImg').src = src;
+let lightboxPhotos = [];
+let lightboxIndex = 0;
+let lightboxOnDelete = null;
+
+function renderLightbox(){
+  document.getElementById('lightboxImg').src = lightboxPhotos[lightboxIndex] || '';
+  const multi = lightboxPhotos.length > 1;
+  document.getElementById('lightboxPrev').style.display = multi ? 'flex' : 'none';
+  document.getElementById('lightboxNext').style.display = multi ? 'flex' : 'none';
+  const dotsWrap = document.getElementById('lightboxDots');
+  dotsWrap.innerHTML = multi ? lightboxPhotos.map((_,i)=>`<span class="lb-dot${i===lightboxIndex?' active':''}"></span>`).join('') : '';
+  document.getElementById('lightboxDel').style.display = lightboxOnDelete ? 'flex' : 'none';
+}
+function openLightbox(urls, startIndex, onDelete){
+  const list = Array.isArray(urls) ? urls : [urls];
+  if(!list.length || !list[0]) return;
+  lightboxPhotos = list;
+  lightboxIndex = startIndex || 0;
+  lightboxOnDelete = onDelete || null;
+  renderLightbox();
   document.getElementById('lightbox').classList.add('show');
 }
-document.getElementById('lightbox').addEventListener('click', ()=>{
+function closeLightbox(){
   document.getElementById('lightbox').classList.remove('show');
-});
-document.getElementById('lightboxClose').addEventListener('click', (e)=>{
+}
+function lightboxPrev(){ lightboxIndex = (lightboxIndex - 1 + lightboxPhotos.length) % lightboxPhotos.length; renderLightbox(); }
+function lightboxNext(){ lightboxIndex = (lightboxIndex + 1) % lightboxPhotos.length; renderLightbox(); }
+
+document.getElementById('lightbox').addEventListener('click', closeLightbox);
+document.getElementById('lightboxClose').addEventListener('click', (e)=>{ e.stopPropagation(); closeLightbox(); });
+document.getElementById('lightboxPrev').addEventListener('click', (e)=>{ e.stopPropagation(); lightboxPrev(); });
+document.getElementById('lightboxNext').addEventListener('click', (e)=>{ e.stopPropagation(); lightboxNext(); });
+document.getElementById('lightboxImg').addEventListener('click', (e)=> e.stopPropagation());
+document.getElementById('lightboxDots').addEventListener('click', (e)=> e.stopPropagation());
+document.getElementById('lightboxDel').addEventListener('click', async (e)=>{
   e.stopPropagation();
-  document.getElementById('lightbox').classList.remove('show');
+  if(!lightboxOnDelete) return;
+  const idx = lightboxIndex;
+  await lightboxOnDelete(idx);
+  lightboxPhotos.splice(idx, 1);
+  if(lightboxPhotos.length === 0){ closeLightbox(); return; }
+  lightboxIndex = Math.min(lightboxIndex, lightboxPhotos.length - 1);
+  renderLightbox();
+});
+
+let lbTouchStartX = 0, lbTouchDeltaX = 0;
+const lightboxEl = document.getElementById('lightbox');
+lightboxEl.addEventListener('touchstart', e=>{
+  lbTouchStartX = e.touches[0].clientX; lbTouchDeltaX = 0;
+}, {passive:true});
+lightboxEl.addEventListener('touchmove', e=>{
+  lbTouchDeltaX = e.touches[0].clientX - lbTouchStartX;
+}, {passive:true});
+lightboxEl.addEventListener('touchend', ()=>{
+  if(lightboxPhotos.length <= 1) return;
+  if(lbTouchDeltaX < -50) lightboxNext();
+  else if(lbTouchDeltaX > 50) lightboxPrev();
 });
 document.querySelectorAll('[data-close]').forEach(b=>{
   b.addEventListener('click', ()=> hideOverlay(b.dataset.close));
