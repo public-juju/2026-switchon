@@ -1121,7 +1121,7 @@ async function renderDayDetail(wi){
     const [wh,wm] = wake.split(':').map(Number);
     let mins = (wh*60+wm) - (bh*60+bm);
     if(mins <= 0) mins += 24*60; // 자정을 넘겨 자는 경우
-    return Math.round((mins/60)*10)/10;
+    return mins/60;
   }
   function renderSleepResult(){
     const resEl = document.getElementById(`sleepResult-${wi}`);
