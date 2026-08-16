@@ -313,6 +313,8 @@
   .lightbox-dots{position:absolute; bottom:24px; left:0; right:0; display:flex; justify-content:center; gap:6px;}
   .lb-dot{width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.35);}
   .lb-dot.active{background:#fff;}
+  .lightbox-label{position:absolute; top:18px; left:18px; background:rgba(255,255,255,.15); color:#fff;
+    font-size:12px; font-weight:700; padding:6px 12px; border-radius:100px; z-index:2; font-variant-numeric:tabular-nums;}
 
   .toast{position:fixed; bottom:96px; left:50%; transform:translateX(-50%); background:var(--sage-deep); color:#fff; font-size:13px; font-weight:600;
     padding:10px 18px; border-radius:100px; z-index:200; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;}
@@ -517,6 +519,7 @@
 <div class="lightbox" id="lightbox">
   <button class="lightbox-close" id="lightboxClose">✕</button>
   <button class="lightbox-del" id="lightboxDel" style="display:none;">🗑</button>
+  <div class="lightbox-label" id="lightboxLabel" style="display:none;"></div>
   <button class="lightbox-nav lightbox-prev" id="lightboxPrev" style="display:none;">‹</button>
   <img id="lightboxImg" src="">
   <button class="lightbox-nav lightbox-next" id="lightboxNext" style="display:none;">›</button>
@@ -1165,14 +1168,16 @@ async function renderDayDetail(wi){
     grid.appendChild(cell);
     if(hasPhoto){
       Promise.all(photos.map(p => getPhoto(mealPhotoKey(date, key, p.id)))).then(urls=>{
-        const validUrls = urls.filter(Boolean);
+        const pairs = photos.map((p,i)=>({url:urls[i], time:p.time})).filter(x=>x.url);
+        const validUrls = pairs.map(x=>x.url);
+        const validTimes = pairs.map(x=>x.time);
         if(validUrls.length){
           const btn = cell.querySelector('.meal-photo');
           const span = btn.querySelector('.plus');
           span.outerHTML = `<img src="${validUrls[0]}">`;
           btn.querySelector('img').addEventListener('click', (e)=>{
             e.stopPropagation();
-            openLightbox(validUrls, 0, (idx)=> deleteMealPhoto(date, key, wi, idx));
+            openLightbox(validUrls, 0, (idx)=> deleteMealPhoto(date, key, wi, idx), validTimes);
           });
         }
       });
@@ -1359,6 +1364,7 @@ function hideOverlay(id){ document.getElementById(id).classList.remove('show'); 
 let lightboxPhotos = [];
 let lightboxIndex = 0;
 let lightboxOnDelete = null;
+let lightboxLabels = [];
 
 function renderLightbox(){
   document.getElementById('lightboxImg').src = lightboxPhotos[lightboxIndex] || '';
@@ -1368,13 +1374,18 @@ function renderLightbox(){
   const dotsWrap = document.getElementById('lightboxDots');
   dotsWrap.innerHTML = multi ? lightboxPhotos.map((_,i)=>`<span class="lb-dot${i===lightboxIndex?' active':''}"></span>`).join('') : '';
   document.getElementById('lightboxDel').style.display = lightboxOnDelete ? 'flex' : 'none';
+  const labelEl = document.getElementById('lightboxLabel');
+  const label = lightboxLabels[lightboxIndex];
+  labelEl.textContent = label || '';
+  labelEl.style.display = label ? 'block' : 'none';
 }
-function openLightbox(urls, startIndex, onDelete){
+function openLightbox(urls, startIndex, onDelete, labels){
   const list = Array.isArray(urls) ? urls : [urls];
   if(!list.length || !list[0]) return;
   lightboxPhotos = list;
   lightboxIndex = startIndex || 0;
   lightboxOnDelete = onDelete || null;
+  lightboxLabels = labels || [];
   renderLightbox();
   document.getElementById('lightbox').classList.add('show');
 }
@@ -1396,6 +1407,7 @@ document.getElementById('lightboxDel').addEventListener('click', async (e)=>{
   const idx = lightboxIndex;
   await lightboxOnDelete(idx);
   lightboxPhotos.splice(idx, 1);
+  lightboxLabels.splice(idx, 1);
   if(lightboxPhotos.length === 0){ closeLightbox(); return; }
   lightboxIndex = Math.min(lightboxIndex, lightboxPhotos.length - 1);
   renderLightbox();
