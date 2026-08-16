@@ -163,11 +163,11 @@
   .meal-box{display:flex; flex-direction:column; align-items:center; gap:6px;}
   .meal-photo{width:100%; aspect-ratio:1; border-radius:14px; background:var(--sage-soft); border:none; cursor:pointer;
     display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;}
-  .meal-photo img{width:100%; height:100%; object-fit:cover;}
+  .meal-photo img{width:100%; height:100%; object-fit:cover; position:absolute; inset:0; z-index:2; cursor:zoom-in;}
   .meal-photo .plus{font-size:24px; color:var(--sage); font-weight:300;}
   .meal-photo input[type=file]{position:absolute; inset:0; opacity:0; cursor:pointer; z-index:1;}
   .meal-photo .rm{position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,.55);
-    color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; border:none; z-index:2;}
+    color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; border:none; z-index:3;}
   .meal-name{font-size:12.5px; font-weight:700;}
   .meal-time{font-size:10.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums;}
 
@@ -292,6 +292,13 @@
   .img-upload img{max-width:100%; border-radius:10px; margin-top:8px;}
   .primary-btn{width:100%; background:var(--sage); color:#fff; border:none; border-radius:14px; padding:14px; font-size:15px; font-weight:800; margin-top:6px;}
   .hidden-file{position:absolute; inset:0; opacity:0; cursor:pointer;}
+
+  .lightbox{position:fixed; inset:0; background:rgba(10,14,20,.92); z-index:300; display:none;
+    align-items:center; justify-content:center; padding:24px;}
+  .lightbox.show{display:flex;}
+  .lightbox img{max-width:100%; max-height:100%; border-radius:14px; object-fit:contain;}
+  .lightbox-close{position:absolute; top:18px; right:18px; width:36px; height:36px; border-radius:50%;
+    background:rgba(255,255,255,.15); color:#fff; border:none; font-size:18px; display:flex; align-items:center; justify-content:center;}
 
   .toast{position:fixed; bottom:96px; left:50%; transform:translateX(-50%); background:var(--sage-deep); color:#fff; font-size:13px; font-weight:600;
     padding:10px 18px; border-radius:100px; z-index:200; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;}
@@ -491,6 +498,11 @@
     </div>
     <div id="compareResults"></div>
   </div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightboxClose">✕</button>
+  <img id="lightboxImg" src="">
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1118,6 +1130,10 @@ async function renderDayDetail(wi){
           const btn = cell.querySelector('.meal-photo');
           const span = btn.querySelector('.plus');
           span.outerHTML = `<img src="${url}">`;
+          btn.querySelector('img').addEventListener('click', (e)=>{
+            e.stopPropagation();
+            openLightbox(url);
+          });
         }
       });
     }
@@ -1153,7 +1169,10 @@ async function renderDayDetail(wi){
       exList.appendChild(item);
       if(ex.hasPhoto){
         getPhoto(`exphoto:${date}:${ex.id}`).then(url=>{
-          if(url){ const img = item.querySelector('[data-exphoto]'); if(img) img.src = url; }
+          if(url){
+            const img = item.querySelector('[data-exphoto]');
+            if(img){ img.src = url; img.style.cursor='zoom-in'; img.addEventListener('click', ()=> openLightbox(url)); }
+          }
         });
       }
     });
@@ -1279,6 +1298,19 @@ document.getElementById('saveEx').addEventListener('click', async ()=>{
 ============================================================ */
 function showOverlay(id){ document.getElementById(id).classList.add('show'); }
 function hideOverlay(id){ document.getElementById(id).classList.remove('show'); }
+
+function openLightbox(src){
+  if(!src) return;
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('show');
+}
+document.getElementById('lightbox').addEventListener('click', ()=>{
+  document.getElementById('lightbox').classList.remove('show');
+});
+document.getElementById('lightboxClose').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  document.getElementById('lightbox').classList.remove('show');
+});
 document.querySelectorAll('[data-close]').forEach(b=>{
   b.addEventListener('click', ()=> hideOverlay(b.dataset.close));
 });
@@ -1451,6 +1483,8 @@ async function fillRecFull(date){
     if(url){
       const img = document.createElement('img');
       img.src = url;
+      img.style.cursor = 'zoom-in';
+      img.addEventListener('click', ()=> openLightbox(url));
       box.appendChild(img);
     }
   }
