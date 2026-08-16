@@ -762,6 +762,14 @@ async function getPhoto(key){ return await storageGet(key); }
 async function setPhoto(key, dataUrl){ const ok = await storageSet(key, dataUrl); if(!ok) toast('사진 저장 실패 (용량이 너무 클 수 있어요)'); }
 async function delPhoto(key){ await storageDelete(key); }
 
+function calcSleepHours(bed, wake){
+  if(!bed || !wake) return null;
+  const [bh,bm] = bed.split(':').map(Number);
+  const [wh,wm] = wake.split(':').map(Number);
+  let mins = (wh*60+wm) - (bh*60+bm);
+  if(mins <= 0) mins += 24*60; // 자정을 넘겨 자는 경우
+  return mins/60;
+}
 function ensureDay(date){
   if(!DAYS[date]) DAYS[date] = { meals:{breakfast:{},lunch:{},snack:{},dinner:{}}, exercise:[], memo:'', water:0 };
   if(!DAYS[date].meals) DAYS[date].meals = {breakfast:{},lunch:{},snack:{},dinner:{}};
@@ -777,6 +785,10 @@ function ensureDay(date){
   if(DAYS[date].sleep === undefined) DAYS[date].sleep = null;
   if(DAYS[date].sleepBed === undefined) DAYS[date].sleepBed = null;
   if(DAYS[date].sleepWake === undefined) DAYS[date].sleepWake = null;
+  // 예전 버그(반올림 오차)로 저장된 값을 취침/기상 시각으로부터 다시 정확히 계산해 자동으로 보정한다.
+  if(DAYS[date].sleepBed && DAYS[date].sleepWake){
+    DAYS[date].sleep = calcSleepHours(DAYS[date].sleepBed, DAYS[date].sleepWake);
+  }
   return DAYS[date];
 }
 function mealPhotoKey(date, meal, id){
@@ -1115,14 +1127,6 @@ async function renderDayDetail(wi){
   });
   cupsWrap.appendChild(extraBtn);
 
-  function calcSleepHours(bed, wake){
-    if(!bed || !wake) return null;
-    const [bh,bm] = bed.split(':').map(Number);
-    const [wh,wm] = wake.split(':').map(Number);
-    let mins = (wh*60+wm) - (bh*60+bm);
-    if(mins <= 0) mins += 24*60; // 자정을 넘겨 자는 경우
-    return mins/60;
-  }
   function renderSleepResult(){
     const resEl = document.getElementById(`sleepResult-${wi}`);
     if(day.sleep!=null){
