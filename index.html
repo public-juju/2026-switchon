@@ -166,13 +166,18 @@
   .meal-photo img{width:100%; height:100%; object-fit:cover; position:absolute; inset:0; z-index:2; cursor:zoom-in;}
   .meal-photo .plus{font-size:24px; color:var(--sage); font-weight:300;}
   .meal-photo .meal-file-main{position:absolute; inset:0; opacity:0; cursor:pointer; z-index:1;}
-  .meal-photo .meal-file-add{position:absolute; bottom:3px; left:3px; width:20px; height:20px; opacity:0; cursor:pointer; z-index:4;}
-  .meal-photo .addmore-badge{position:absolute; bottom:3px; left:3px; width:20px; height:20px; border-radius:50%;
-    background:rgba(0,0,0,.55); color:#fff; font-size:13px; display:flex; align-items:center; justify-content:center; z-index:3; pointer-events:none;}
+  .meal-photo .meal-file-add{position:absolute; bottom:3px; left:3px; width:22px; height:22px; opacity:0; cursor:pointer; z-index:4;}
+  .meal-photo .addmore-badge{position:absolute; bottom:3px; left:3px; width:22px; height:22px; border-radius:50%;
+    background:var(--sage); color:#fff; font-size:14px; font-weight:700; display:flex; align-items:center; justify-content:center; z-index:3; pointer-events:none;
+    box-shadow:0 1px 4px rgba(0,0,0,.25);}
   .meal-photo .photo-count{position:absolute; top:3px; left:3px; background:rgba(0,0,0,.55); color:#fff; font-size:9px; font-weight:700;
     padding:2px 6px; border-radius:100px; z-index:3; pointer-events:none;}
   .meal-photo .rm{position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,.55);
     color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; border:none; z-index:3;}
+  .photo-grid{position:absolute; inset:0; z-index:2; display:grid; gap:1.5px; border-radius:14px; overflow:hidden;}
+  .photo-grid img{position:static; width:100%; height:100%; object-fit:cover; cursor:zoom-in; display:block;}
+  .photo-grid .cell-more{background:rgba(0,0,0,.55); color:#fff; font-size:13px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; cursor:zoom-in;}
   .meal-name{font-size:12.5px; font-weight:700;}
   .meal-time{font-size:10.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums;}
 
@@ -1155,7 +1160,6 @@ async function renderDayDetail(wi){
         <span class="plus">${hasPhoto ? '' : '+'}</span>
         ${!hasPhoto ? `<input type="file" accept="image/*" multiple data-meal="${key}" data-date="${date}" class="meal-file-main">` : ''}
         ${hasPhoto ? `<button class="rm" data-rm="${key}" data-date="${date}">✕</button>` : ''}
-        ${hasPhoto && photos.length>1 ? `<span class="photo-count">${photos.length}장</span>` : ''}
         ${hasPhoto ? `
           <input type="file" accept="image/*" multiple data-meal="${key}" data-date="${date}" class="meal-file-add">
           <span class="addmore-badge">+</span>
@@ -1171,14 +1175,36 @@ async function renderDayDetail(wi){
         const pairs = photos.map((p,i)=>({url:urls[i], time:p.time})).filter(x=>x.url);
         const validUrls = pairs.map(x=>x.url);
         const validTimes = pairs.map(x=>x.time);
-        if(validUrls.length){
-          const btn = cell.querySelector('.meal-photo');
-          const span = btn.querySelector('.plus');
+        if(!validUrls.length) return;
+        const btn = cell.querySelector('.meal-photo');
+        const span = btn.querySelector('.plus');
+        const openAt = (idx)=> openLightbox(validUrls, idx, (i)=> deleteMealPhoto(date, key, wi, i), validTimes);
+
+        if(validUrls.length === 1){
           span.outerHTML = `<img src="${validUrls[0]}">`;
-          btn.querySelector('img').addEventListener('click', (e)=>{
-            e.stopPropagation();
-            openLightbox(validUrls, 0, (idx)=> deleteMealPhoto(date, key, wi, idx), validTimes);
-          });
+          btn.querySelector('img').addEventListener('click', (e)=>{ e.stopPropagation(); openAt(0); });
+        } else {
+          const n = Math.min(validUrls.length, 4);
+          const gridTemplate = n === 2 ? 'grid-template-columns:1fr 1fr; grid-template-rows:1fr;' : 'grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;';
+          const wrap = document.createElement('div');
+          wrap.className = 'photo-grid';
+          wrap.style.cssText = gridTemplate;
+          for(let i=0;i<n;i++){
+            if(i===3 && validUrls.length>4){
+              const more = document.createElement('div');
+              more.className = 'cell-more';
+              more.textContent = `+${validUrls.length-3}`;
+              more.addEventListener('click', (e)=>{ e.stopPropagation(); openAt(3); });
+              wrap.appendChild(more);
+            } else {
+              const img = document.createElement('img');
+              img.src = validUrls[i];
+              if(n===3 && i===0) img.style.gridRow = 'span 2';
+              img.addEventListener('click', (e)=>{ e.stopPropagation(); openAt(i); });
+              wrap.appendChild(img);
+            }
+          }
+          span.replaceWith(wrap);
         }
       });
     }
