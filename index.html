@@ -250,12 +250,16 @@
   .report-stats .rs-card{background:var(--bg); border-radius:12px; padding:12px 10px; text-align:center;}
   .report-stats .rs-lab{font-size:11px; color:var(--ink-soft); font-weight:600;}
   .report-stats .rs-val{font-size:15px; font-weight:800; margin-top:4px;}
-  .report-weeks{display:flex; flex-direction:column; gap:8px; margin-bottom:6px;}
-  .rw-row{display:flex; align-items:center; gap:10px; font-size:12.5px;}
-  .rw-row .rw-lab{width:44px; font-weight:700; color:var(--ink-soft); flex-shrink:0;}
-  .rw-row .rw-bar{flex:1; height:10px; background:var(--bg); border-radius:100px; overflow:hidden;}
-  .rw-row .rw-bar-in{height:100%; background:var(--sage); border-radius:100px;}
-  .rw-row .rw-count{width:38px; text-align:right; color:var(--ink-soft); flex-shrink:0;}
+  .report-weeks{display:flex; flex-direction:column; gap:10px; margin-bottom:6px;}
+  .rw-bar{height:8px; background:var(--bg); border-radius:100px; overflow:hidden; margin:8px 0 10px;}
+  .rw-bar-in{height:100%; background:var(--sage); border-radius:100px;}
+  .week-insight-card{background:var(--bg); border-radius:14px; padding:13px 14px;}
+  .wi-head{display:flex; align-items:center; justify-content:space-between;}
+  .wi-title{font-size:13.5px; font-weight:800;}
+  .wi-count{font-size:11.5px; color:var(--ink-soft); font-weight:600;}
+  .wi-stats{display:flex; flex-direction:column; gap:4px;}
+  .wi-stat{font-size:12px; color:var(--ink-soft);}
+  .wi-stat b{color:var(--ink); font-weight:700;}
 
   .cmp-table{width:100%; border-collapse:collapse; margin-top:10px;}
   .cmp-table th{font-size:11px; color:var(--ink-soft); font-weight:600; text-align:right; padding:6px 4px;}
@@ -926,6 +930,26 @@ function renderHero(){
 function totalRecordedDays(){
   return WEEKS.flat().filter(dayHasRecord).length;
 }
+function weeklyInsights(days){
+  let exerciseCount = 0;
+  let waterSum = 0, waterLoggedDays = 0;
+  let sleepSum = 0, sleepLoggedDays = 0;
+  days.forEach(date=>{
+    const d = DAYS[date];
+    if(!d) return;
+    if(d.exercise && d.exercise.length) exerciseCount += d.exercise.length;
+    if(d.water){ waterSum += d.water; waterLoggedDays++; }
+    if(d.sleep!=null){ sleepSum += d.sleep; sleepLoggedDays++; }
+  });
+  const waterAvgCups = waterLoggedDays ? Math.round((waterSum/waterLoggedDays)*10)/10 : null;
+  const sleepAvgHours = sleepLoggedDays ? sleepSum/sleepLoggedDays : null;
+  let sleepText = '기록 없음';
+  if(sleepAvgHours!=null){
+    const h = Math.floor(sleepAvgHours), m = Math.round((sleepAvgHours-h)*60);
+    sleepText = `${h}시간 ${m>0? m+'분 ':''}평균`;
+  }
+  return { exerciseCount, waterAvgCups, sleepText, waterLoggedDays, sleepLoggedDays };
+}
 function renderReport(){
   const body = document.getElementById('reportBody');
   const total = totalRecordedDays();
@@ -940,10 +964,23 @@ function renderReport(){
     return `<div class="rs-card"><div class="rs-lab">${lab}</div><div class="rs-val">${sign}${diff}${unit}</div></div>`;
   };
 
-  const weekBars = WEEKS.map((days, i)=>{
+  const weekCards = WEEKS.map((days, i)=>{
     const c = recordedCount(days);
     const p = Math.round(c/7*100);
-    return `<div class="rw-row"><div class="rw-lab">${i+1}주차</div><div class="rw-bar"><div class="rw-bar-in" style="width:${p}%"></div></div><div class="rw-count">${c}/7</div></div>`;
+    const ins = weeklyInsights(days);
+    return `
+      <div class="week-insight-card">
+        <div class="wi-head">
+          <span class="wi-title">${i+1}주차</span>
+          <span class="wi-count">${c}/7일 기록</span>
+        </div>
+        <div class="rw-bar"><div class="rw-bar-in" style="width:${p}%"></div></div>
+        <div class="wi-stats">
+          <div class="wi-stat">🏋️ 운동 <b>${ins.exerciseCount}회</b></div>
+          <div class="wi-stat">💧 물 <b>${ins.waterAvgCups!=null ? ins.waterAvgCups+'잔 평균' : '기록 없음'}</b></div>
+          <div class="wi-stat">😴 수면 <b>${ins.sleepText}</b></div>
+        </div>
+      </div>`;
   }).join('');
 
   body.innerHTML = `
@@ -962,7 +999,7 @@ function renderReport(){
         ${statRow('체지방률', '%', first&&first.fatPct, latest&&latest.fatPct, true)}
         ${statRow('골격근량', 'kg', first&&first.skeletal, latest&&latest.skeletal, false)}
       </div>
-      <div class="report-weeks">${weekBars}</div>
+      <div class="report-weeks">${weekCards}</div>
     </div>
   `;
 }
