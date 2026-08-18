@@ -391,9 +391,14 @@
             <div class="sub" id="statFatSub"></div>
           </div>
           <div class="stat-card">
-            <div class="lab">💪 근육량</div>
-            <div class="val" id="statMuscle">기록 없음</div>
-            <div class="sub" id="statMuscleSub"></div>
+            <div class="lab">🦴 골격근량</div>
+            <div class="val" id="statSkeletal">기록 없음</div>
+            <div class="sub" id="statSkeletalSub"></div>
+          </div>
+          <div class="stat-card">
+            <div class="lab">🥓 체지방량</div>
+            <div class="val" id="statFatMass">기록 없음</div>
+            <div class="sub" id="statFatMassSub"></div>
           </div>
         </div>
 
@@ -898,22 +903,24 @@ function renderHero(){
   if(!ld){
     document.getElementById('statWeight').textContent = '기록 없음';
     document.getElementById('statFat').textContent = '기록 없음';
-    document.getElementById('statMuscle').textContent = '기록 없음';
+    document.getElementById('statSkeletal').textContent = '기록 없음';
+    document.getElementById('statFatMass').textContent = '기록 없음';
     document.getElementById('statWeightSub').textContent = '';
     document.getElementById('statFatSub').textContent = '';
-    document.getElementById('statMuscleSub').textContent = '';
+    document.getElementById('statSkeletalSub').textContent = '';
+    document.getElementById('statFatMassSub').textContent = '';
     return;
   }
   const latest = INBODY[ld], first = INBODY[fd];
   document.getElementById('statWeight').textContent = (latest.weight!=null? latest.weight+'kg' : '기록 없음');
   document.getElementById('statFat').textContent = (latest.fatPct!=null? latest.fatPct+'%' : '기록 없음');
-  const muscleVal = latest.muscleMass!=null ? latest.muscleMass : latest.skeletal;
-  document.getElementById('statMuscle').textContent = (muscleVal!=null? muscleVal+'kg' : '기록 없음');
+  document.getElementById('statSkeletal').textContent = (latest.skeletal!=null? latest.skeletal+'kg' : '기록 없음');
+  document.getElementById('statFatMass').textContent = (latest.fatMass!=null? latest.fatMass+'kg' : '기록 없음');
 
   if(latest.weight!=null && first.weight!=null) deltaLine(document.getElementById('statWeightSub'), first.weight, latest.weight, 'kg', true);
   if(latest.fatPct!=null && first.fatPct!=null) deltaLine(document.getElementById('statFatSub'), first.fatPct, latest.fatPct, '%', true);
-  const muscleFirst = first.muscleMass!=null ? first.muscleMass : first.skeletal;
-  if(muscleVal!=null && muscleFirst!=null) deltaLine(document.getElementById('statMuscleSub'), muscleFirst, muscleVal, 'kg', false);
+  if(latest.skeletal!=null && first.skeletal!=null) deltaLine(document.getElementById('statSkeletalSub'), first.skeletal, latest.skeletal, 'kg', false);
+  if(latest.fatMass!=null && first.fatMass!=null) deltaLine(document.getElementById('statFatMassSub'), first.fatMass, latest.fatMass, 'kg', true);
 }
 
 /* ============================================================
