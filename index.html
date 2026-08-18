@@ -262,6 +262,8 @@
   .cmp-table td:first-child{text-align:left; font-weight:600; color:var(--ink-soft);}
 
   .rec-item{background:var(--card); border-radius:16px; box-shadow:var(--shadow); margin-bottom:10px; overflow:hidden;}
+  .reclist-more{width:100%; border:1.5px dashed var(--line); background:var(--bg); border-radius:14px; padding:12px;
+    color:var(--sage); font-weight:700; font-size:13px; margin-top:2px;}
   .rec-head{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; cursor:pointer;}
   .rec-date{font-size:13.5px; font-weight:800;}
   .rec-mini{font-size:12px; color:var(--ink-soft); margin-top:3px;}
@@ -1584,6 +1586,8 @@ function renderChart(){
   });
 }
 
+let recListExpanded = false;
+const RECLIST_LIMIT = 5;
 function renderRecList(){
   const wrap = document.getElementById('recList');
   wrap.innerHTML = '';
@@ -1592,7 +1596,8 @@ function renderRecList(){
     wrap.innerHTML = `<div class="empty-note">기록을 추가하면 여기에 표시돼요.</div>`;
     return;
   }
-  dates.forEach(date=>{
+  const visibleDates = recListExpanded ? dates : dates.slice(0, RECLIST_LIMIT);
+  visibleDates.forEach(date=>{
     const rec = INBODY[date];
     const el = document.createElement('div');
     el.className = 'rec-item';
@@ -1612,6 +1617,13 @@ function renderRecList(){
     `;
     wrap.appendChild(el);
   });
+  if(dates.length > RECLIST_LIMIT){
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'reclist-more';
+    moreBtn.textContent = recListExpanded ? '접기' : `이전 기록 더보기 (${dates.length - RECLIST_LIMIT}개)`;
+    moreBtn.addEventListener('click', ()=>{ recListExpanded = !recListExpanded; renderRecList(); });
+    wrap.appendChild(moreBtn);
+  }
   wrap.querySelectorAll('.rec-head').forEach(h=>{
     h.addEventListener('click', (e)=>{
       if(e.target.closest('.edit') || e.target.closest('.del')) return;
