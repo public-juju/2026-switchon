@@ -246,12 +246,31 @@
   .report-progress .rp-num{font-size:26px; font-weight:800; font-variant-numeric:tabular-nums;}
   .report-progress .rp-bar{flex:1; height:8px; background:rgba(255,255,255,.25); border-radius:100px; overflow:hidden;}
   .report-progress .rp-bar-in{height:100%; background:#fff; border-radius:100px;}
-  .report-stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;}
   .report-final-note{text-align:center; background:var(--sage-soft); color:var(--sage-deep); font-weight:700; font-size:13px;
     border-radius:12px; padding:11px; margin-bottom:14px;}
-  .report-stats .rs-card{background:var(--bg); border-radius:12px; padding:12px 10px; text-align:center;}
-  .report-stats .rs-lab{font-size:11px; color:var(--ink-soft); font-weight:600;}
-  .report-stats .rs-val{font-size:15px; font-weight:800; margin-top:4px;}
+
+  .insight-deck{display:flex; overflow-x:auto; gap:12px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; margin:0 -20px 10px; padding:0 20px 4px;}
+  .insight-deck::-webkit-scrollbar{display:none;}
+  .insight-card{flex:0 0 100%; scroll-snap-align:center; border-radius:22px; padding:24px 22px; min-height:280px;
+    position:relative; overflow:hidden; color:#fff; display:flex; flex-direction:column;}
+  .insight-blob{position:absolute; border-radius:50%; background:rgba(255,255,255,.16); pointer-events:none;}
+  .insight-blob1{width:150px; height:150px; top:-50px; right:-40px;}
+  .insight-blob2{width:110px; height:110px; bottom:-30px; left:-30px;}
+  .insight-title{font-size:14px; font-weight:700; opacity:.9; position:relative;}
+  .insight-big{font-size:38px; font-weight:800; margin-top:20px; letter-spacing:-0.01em; position:relative;}
+  .insight-desc{font-size:13px; line-height:1.6; margin-top:10px; opacity:.95; position:relative; max-width:88%;}
+  .insight-save-btn{margin-top:auto; align-self:flex-start; border:none; background:rgba(255,255,255,.22); color:#fff;
+    font-size:12.5px; font-weight:700; padding:9px 16px; border-radius:100px; position:relative;}
+  .insight-sub{font-size:11.5px; opacity:.75; margin-top:14px; position:relative;}
+  .insight-blue{background:linear-gradient(135deg,#3572EE,#0B3AA6);}
+  .insight-rose{background:linear-gradient(135deg,#E8899B,#B9576D);}
+  .insight-teal{background:linear-gradient(135deg,#4FBFB0,#1E7E72);}
+  .insight-amber{background:linear-gradient(135deg,#F0B15E,#C97F2A);}
+  .insight-lavender{background:linear-gradient(135deg,#A79BE8,#6E5FC4);}
+  .insight-dots{display:flex; justify-content:center; gap:6px; margin-bottom:16px;}
+  .insight-dot{width:6px; height:6px; border-radius:50%; background:var(--line);}
+  .insight-dot.active{background:var(--sage); width:16px; border-radius:100px; transition:width .2s;}
   .report-weeks{display:flex; flex-direction:column; gap:10px; margin-bottom:6px;}
   .rw-bar{height:8px; background:var(--bg); border-radius:100px; overflow:hidden; margin:8px 0 10px;}
   .rw-bar-in{height:100%; background:var(--sage); border-radius:100px;}
@@ -962,6 +981,33 @@ function weeklyInsights(days){
   }
   return { exerciseCount, waterAvgMl, sleepText, waterLoggedDays, sleepLoggedDays };
 }
+function overallInsights(){
+  const allDays = WEEKS.flat();
+  let exerciseCount = 0;
+  const typeCounts = {};
+  let waterSum = 0, waterLoggedDays = 0;
+  let sleepSum = 0, sleepLoggedDays = 0;
+  allDays.forEach(date=>{
+    const d = DAYS[date];
+    if(!d) return;
+    (d.exercise||[]).forEach(ex=>{
+      exerciseCount++;
+      if(ex.type) typeCounts[ex.type] = (typeCounts[ex.type]||0) + 1;
+    });
+    if(d.water){ waterSum += d.water; waterLoggedDays++; }
+    if(d.sleep!=null){ sleepSum += d.sleep; sleepLoggedDays++; }
+  });
+  let topType = null, topCount = 0;
+  Object.entries(typeCounts).forEach(([t,c])=>{ if(c>topCount){ topType=t; topCount=c; } });
+  const waterAvgMl = waterLoggedDays ? Math.round((waterSum/waterLoggedDays)*WATER_ML_PER_CUP) : null;
+  const sleepAvgHours = sleepLoggedDays ? sleepSum/sleepLoggedDays : null;
+  let sleepText = null;
+  if(sleepAvgHours!=null){
+    const h = Math.floor(sleepAvgHours), m = Math.round((sleepAvgHours-h)*60);
+    sleepText = `${h}시간 ${m>0? m+'분':''}`.trim();
+  }
+  return { exerciseCount, topType, topCount, waterAvgMl, sleepText, waterLoggedDays, sleepLoggedDays };
+}
 function renderReport(){
   const body = document.getElementById('reportBody');
   const total = totalRecordedDays();
@@ -972,10 +1018,10 @@ function renderReport(){
   document.getElementById('reportSheetTitle').textContent = isFinal ? '🎉 최종 리포트' : '4주 결산 리포트';
 
   const statRow = (lab, unit, a, b, lowerGood) => {
-    if(a==null || b==null) return `<div class="rs-card"><div class="rs-lab">${lab}</div><div class="rs-val">–</div></div>`;
+    if(a==null || b==null) return { diffText:'–', hasData:false };
     const diff = +(b - a).toFixed(1);
     const sign = diff>0 ? '+' : '';
-    return `<div class="rs-card"><div class="rs-lab">${lab}</div><div class="rs-val">${sign}${diff}${unit}</div></div>`;
+    return { diffText:`${sign}${diff}${unit}`, diff, hasData:true };
   };
 
   const weekCards = WEEKS.map((days, i)=>{
@@ -997,6 +1043,37 @@ function renderReport(){
       </div>`;
   }).join('');
 
+  const dateRangeText = `${START_DATE.slice(5).replace('-','.')} – ${todayStr() < END_DATE ? todayStr().slice(5).replace('-','.') : END_DATE.slice(5).replace('-','.')}`;
+  const oi = overallInsights();
+  const w = statRow('', 'kg', first&&first.weight, latest&&latest.weight, true);
+  const fp = statRow('', '%', first&&first.fatPct, latest&&latest.fatPct, true);
+  const sk = statRow('', 'kg', first&&first.skeletal, latest&&latest.skeletal, false);
+
+  const insightCards = [
+    { cls:'insight-blue', title:'체중 변화', big: w.hasData ? w.diffText : '기록 없음',
+      desc: w.hasData ? `첫날 대비 체중이 ${w.diffText} 변했어요. 지금은 ${latest.weight}kg예요.` : '인바디 기록을 추가하면 변화를 보여드려요.' },
+    { cls:'insight-rose', title:'체지방률 변화', big: fp.hasData ? fp.diffText : '기록 없음',
+      desc: fp.hasData ? `첫날 대비 체지방률이 ${fp.diffText} 변했어요. 지금은 ${latest.fatPct}%예요.` : '인바디 기록을 추가하면 변화를 보여드려요.' },
+    { cls:'insight-teal', title:'골격근량 변화', big: sk.hasData ? sk.diffText : '기록 없음',
+      desc: sk.hasData ? `첫날 대비 골격근량이 ${sk.diffText} 변했어요. 지금은 ${latest.skeletal}kg예요.` : '인바디 기록을 추가하면 변화를 보여드려요.' },
+    { cls:'insight-amber', title:'운동 횟수', big: `${oi.exerciseCount}회`,
+      desc: oi.topType ? `가장 많이 한 운동은 ${oi.topType}(${oi.topCount}회)였어요.` : '아직 운동 기록이 없어요.' },
+    { cls:'insight-lavender', title:'물 & 수면', big: oi.waterAvgMl!=null ? `${oi.waterAvgMl}ml` : '기록 없음',
+      desc: `하루 평균 물 섭취예요.${oi.sleepText ? ` 수면은 평균 ${oi.sleepText} 잤어요.` : ' 수면 기록은 아직 없어요.'}` },
+  ];
+  const insightHtml = insightCards.map((c,i)=>`
+    <div class="insight-card ${c.cls}" id="insightCard-${i}">
+      <div class="insight-blob insight-blob1"></div>
+      <div class="insight-blob insight-blob2"></div>
+      <div class="insight-title">${c.title}</div>
+      <div class="insight-big">${c.big}</div>
+      <div class="insight-desc">${c.desc}</div>
+      <button class="insight-save-btn" data-idx="${i}">이미지로 저장</button>
+      <div class="insight-sub">${dateRangeText}</div>
+    </div>
+  `).join('');
+  const dotsHtml = insightCards.map((_,i)=>`<span class="insight-dot${i===0?' active':''}"></span>`).join('');
+
   body.innerHTML = `
     <div id="reportCapture">
       <div class="report-head">
@@ -1008,15 +1085,40 @@ function renderReport(){
           <div class="rp-num">${pct}%</div>
         </div>
       </div>
-      <div class="report-stats">
-        ${statRow('체중', 'kg', first&&first.weight, latest&&latest.weight, true)}
-        ${statRow('체지방률', '%', first&&first.fatPct, latest&&latest.fatPct, true)}
-        ${statRow('골격근량', 'kg', first&&first.skeletal, latest&&latest.skeletal, false)}
-      </div>
+      <div class="insight-deck" id="insightDeck">${insightHtml}</div>
+      <div class="insight-dots" id="insightDots">${dotsHtml}</div>
       ${isFinal ? `<div class="report-final-note">🎉 4주 스위치온 완주를 축하해요!</div>` : ''}
       <div class="report-weeks">${weekCards}</div>
     </div>
   `;
+  const deck = document.getElementById('insightDeck');
+  deck.addEventListener('scroll', ()=>{
+    const idx = Math.round(deck.scrollLeft / deck.clientWidth);
+    document.querySelectorAll('#insightDots .insight-dot').forEach((d,i)=> d.classList.toggle('active', i===idx));
+  });
+  deck.querySelectorAll('.insight-save-btn').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      if(typeof html2canvas === 'undefined'){ toast('이미지 저장 기능을 불러오지 못했어요'); return; }
+      const idx = btn.dataset.idx;
+      const target = document.getElementById(`insightCard-${idx}`);
+      btn.textContent = '저장 중...';
+      try{
+        const canvas = await html2canvas(target, { backgroundColor:null, scale:2 });
+        canvas.toBlob((blob)=>{
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `switchon-insight-${idx}-${todayStr()}.png`;
+          document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+        });
+      }catch(err){
+        toast('이미지 저장에 실패했어요');
+      }finally{
+        btn.textContent = '이미지로 저장';
+      }
+    });
+  });
 }
 function openReportSheet(){
   renderReport();
