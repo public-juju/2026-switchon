@@ -1487,6 +1487,11 @@ let ibChart = null;
 
 function renderMetricChips(){
   const wrap = document.getElementById('metricChips');
+  const prevScroll = {};
+  wrap.querySelectorAll('.ib-acc-body-in').forEach(el=>{
+    const g = el.id.replace('ibAccIn-','');
+    prevScroll[g] = el.scrollLeft;
+  });
   wrap.innerHTML = '';
   const dates = Object.keys(INBODY).sort();
   const latest = dates.length ? INBODY[dates[dates.length-1]] : {};
@@ -1518,6 +1523,7 @@ function renderMetricChips(){
       div.addEventListener('click', ()=>{ activeMetric = m.key; renderMetricChips(); renderChart(); });
       inner.appendChild(div);
     });
+    if(prevScroll[group]) inner.scrollLeft = prevScroll[group];
     acc.querySelector('.ib-acc-head').addEventListener('click', ()=>{
       ibGroupOpen[group] = !ibGroupOpen[group];
       renderMetricChips();
