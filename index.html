@@ -73,6 +73,8 @@
   .hero-label{font-size:12.5px; color:var(--ink-soft); font-weight:600; letter-spacing:.02em;}
   .hero-day{font-size:28px; font-weight:800; margin-top:6px; letter-spacing:-0.01em; font-variant-numeric:tabular-nums;}
   .hero-day span{font-size:15px; font-weight:600; color:var(--ink-soft);}
+  .hero-dday{margin-top:8px; font-size:12.5px; font-weight:700; color:var(--sage-deep); background:var(--sage-soft);
+    display:inline-block; padding:4px 10px; border-radius:100px;}
   .switch-dial{width:104px; height:104px; border-radius:50%; position:relative; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
     background:conic-gradient(var(--sage) calc(var(--pct,0)*1%), var(--sage-soft) 0);}
@@ -347,6 +349,7 @@
             <div class="hero-left">
               <div class="hero-label">진행 현황</div>
               <div class="hero-day" id="heroDay">0<span>일차 / 28일</span></div>
+              <div class="hero-dday" id="heroDday"></div>
             </div>
             <div class="switch-dial" id="switchDial" style="--pct:0">
               <span class="pct" id="heroPct">0%</span>
@@ -375,11 +378,6 @@
         </div>
 
         <div class="stat-grid">
-          <div class="stat-card">
-            <div class="lab">🔁 D-DAY</div>
-            <div class="val" id="statDday">–</div>
-            <div class="sub" id="statDdaySub"></div>
-          </div>
           <div class="stat-card">
             <div class="lab">⚖️ 체중</div>
             <div class="val" id="statWeight">기록 없음</div>
@@ -896,8 +894,7 @@ function renderHero(){
   document.getElementById('heroDay').innerHTML = `${dayIdx}<span>일차 / ${TOTAL_DAYS}일</span>`;
   document.getElementById('heroPct').textContent = pct + '%';
   document.getElementById('switchDial').style.setProperty('--pct', pct);
-  document.getElementById('statDday').textContent = ddayText;
-  document.getElementById('statDdaySub').textContent = ddaySub;
+  document.getElementById('heroDday').textContent = `${ddayText} · ${ddaySub}`;
 
   const fd = firstInbodyDate(), ld = latestInbodyDate();
   if(!ld){
