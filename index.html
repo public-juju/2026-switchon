@@ -1557,16 +1557,22 @@ function renderChart(){
       pointBackgroundColor:'#2F63A8', pointRadius:4, tension:.3, fill:true, spanGaps:true,
     }]},
     options:{
-      layout:{ padding:{ top:22 } },
+      layout:{ padding:{ top:24, left:8, right:8 } },
       plugins:{
         legend:{display:false},
         datalabels:{
-          align:'top', anchor:'end', offset:6,
+          anchor:'end', offset:6, clamp:true,
+          align:(ctx)=>{
+            const i = ctx.dataIndex, n = ctx.dataset.data.length;
+            if(i===0) return 'right';
+            if(i===n-1) return 'left';
+            return 'top';
+          },
           color:'#1D3F72', font:{ weight:'700', size:11 },
           formatter:(v)=> v==null ? '' : `${v}${def.unit||''}`,
         },
       },
-      scales:{ y:{ grid:{color:'#EDF1F7'} }, x:{ grid:{display:false} } },
+      scales:{ y:{ grid:{color:'#EDF1F7'}, grace:'15%' }, x:{ grid:{display:false} } },
       responsive:true,
     }
   });
