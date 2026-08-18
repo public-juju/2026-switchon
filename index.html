@@ -247,6 +247,8 @@
   .report-progress .rp-bar{flex:1; height:8px; background:rgba(255,255,255,.25); border-radius:100px; overflow:hidden;}
   .report-progress .rp-bar-in{height:100%; background:#fff; border-radius:100px;}
   .report-stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;}
+  .report-final-note{text-align:center; background:var(--sage-soft); color:var(--sage-deep); font-weight:700; font-size:13px;
+    border-radius:12px; padding:11px; margin-bottom:14px;}
   .report-stats .rs-card{background:var(--bg); border-radius:12px; padding:12px 10px; text-align:center;}
   .report-stats .rs-lab{font-size:11px; color:var(--ink-soft); font-weight:600;}
   .report-stats .rs-val{font-size:15px; font-weight:800; margin-top:4px;}
@@ -501,9 +503,19 @@
 <!-- ===== 4-week report sheet ===== -->
 <div class="overlay" id="ovReport">
   <div class="sheet">
-    <div class="sheet-head"><h3>4주 결산 리포트</h3><button class="sheet-close" data-close="ovReport">✕</button></div>
+    <div class="sheet-head"><h3 id="reportSheetTitle">4주 결산 리포트</h3><button class="sheet-close" data-close="ovReport">✕</button></div>
     <div id="reportBody"></div>
-    <button class="primary-btn" id="saveReportImg" style="margin-top:14px;">🖼️ 이미지로 저장</button>
+    <div class="field" style="margin-top:14px;">
+      <label>저장할 범위</label>
+      <select id="reportSaveScope">
+        <option value="all">전체 리포트</option>
+        <option value="0">1주차만</option>
+        <option value="1">2주차만</option>
+        <option value="2">3주차만</option>
+        <option value="3">4주차만</option>
+      </select>
+    </div>
+    <button class="primary-btn" id="saveReportImg">🖼️ 이미지로 저장</button>
   </div>
 </div>
 
@@ -941,14 +953,14 @@ function weeklyInsights(days){
     if(d.water){ waterSum += d.water; waterLoggedDays++; }
     if(d.sleep!=null){ sleepSum += d.sleep; sleepLoggedDays++; }
   });
-  const waterAvgCups = waterLoggedDays ? Math.round((waterSum/waterLoggedDays)*10)/10 : null;
+  const waterAvgMl = waterLoggedDays ? Math.round((waterSum/waterLoggedDays)*WATER_ML_PER_CUP) : null;
   const sleepAvgHours = sleepLoggedDays ? sleepSum/sleepLoggedDays : null;
   let sleepText = '기록 없음';
   if(sleepAvgHours!=null){
     const h = Math.floor(sleepAvgHours), m = Math.round((sleepAvgHours-h)*60);
-    sleepText = `${h}시간 ${m>0? m+'분 ':''}평균`;
+    sleepText = `평균 ${h}시간 ${m>0? m+'분':''}`.trim();
   }
-  return { exerciseCount, waterAvgCups, sleepText, waterLoggedDays, sleepLoggedDays };
+  return { exerciseCount, waterAvgMl, sleepText, waterLoggedDays, sleepLoggedDays };
 }
 function renderReport(){
   const body = document.getElementById('reportBody');
@@ -956,6 +968,8 @@ function renderReport(){
   const pct = Math.round(total / TOTAL_DAYS * 100);
   const fd = firstInbodyDate(), ld = latestInbodyDate();
   const first = fd ? INBODY[fd] : null, latest = ld ? INBODY[ld] : null;
+  const isFinal = todayStr() > END_DATE;
+  document.getElementById('reportSheetTitle').textContent = isFinal ? '🎉 최종 리포트' : '4주 결산 리포트';
 
   const statRow = (lab, unit, a, b, lowerGood) => {
     if(a==null || b==null) return `<div class="rs-card"><div class="rs-lab">${lab}</div><div class="rs-val">–</div></div>`;
@@ -969,7 +983,7 @@ function renderReport(){
     const p = Math.round(c/7*100);
     const ins = weeklyInsights(days);
     return `
-      <div class="week-insight-card">
+      <div class="week-insight-card" id="weekCard-${i}">
         <div class="wi-head">
           <span class="wi-title">${i+1}주차</span>
           <span class="wi-count">${c}/7일 기록</span>
@@ -977,7 +991,7 @@ function renderReport(){
         <div class="rw-bar"><div class="rw-bar-in" style="width:${p}%"></div></div>
         <div class="wi-stats">
           <div class="wi-stat">🏋️ 운동 <b>${ins.exerciseCount}회</b></div>
-          <div class="wi-stat">💧 물 <b>${ins.waterAvgCups!=null ? ins.waterAvgCups+'잔 평균' : '기록 없음'}</b></div>
+          <div class="wi-stat">💧 물 <b>${ins.waterAvgMl!=null ? '평균 '+ins.waterAvgMl+'ml' : '기록 없음'}</b></div>
           <div class="wi-stat">😴 수면 <b>${ins.sleepText}</b></div>
         </div>
       </div>`;
@@ -986,7 +1000,7 @@ function renderReport(){
   body.innerHTML = `
     <div id="reportCapture">
       <div class="report-head">
-        <div class="rtitle">2026 스위치온 · 4주 결산</div>
+        <div class="rtitle">2026 스위치온 · ${isFinal ? '최종 결산' : '4주 결산'}</div>
         <div class="rsub">${START_DATE.slice(5).replace('-','.')} – ${END_DATE.slice(5).replace('-','.')}</div>
         <div class="report-progress">
           <div class="rp-num">${total}/${TOTAL_DAYS}일</div>
@@ -999,6 +1013,7 @@ function renderReport(){
         ${statRow('체지방률', '%', first&&first.fatPct, latest&&latest.fatPct, true)}
         ${statRow('골격근량', 'kg', first&&first.skeletal, latest&&latest.skeletal, false)}
       </div>
+      ${isFinal ? `<div class="report-final-note">🎉 4주 스위치온 완주를 축하해요!</div>` : ''}
       <div class="report-weeks">${weekCards}</div>
     </div>
   `;
@@ -1011,14 +1026,17 @@ document.getElementById('openReport').addEventListener('click', openReportSheet)
 document.getElementById('saveReportImg').addEventListener('click', async ()=>{
   const btn = document.getElementById('saveReportImg');
   if(typeof html2canvas === 'undefined'){ toast('이미지 저장 기능을 불러오지 못했어요'); return; }
+  const scope = document.getElementById('reportSaveScope').value;
+  const target = scope === 'all' ? document.getElementById('reportCapture') : document.getElementById(`weekCard-${scope}`);
+  if(!target){ toast('저장할 내용을 찾지 못했어요'); return; }
   btn.textContent = '저장 중...'; btn.disabled = true;
   try{
-    const target = document.getElementById('reportCapture');
     const canvas = await html2canvas(target, { backgroundColor:null, scale:2 });
     canvas.toBlob((blob)=>{
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `switchon-report-${todayStr()}.png`;
+      const suffix = scope === 'all' ? 'report' : `week${+scope+1}`;
+      a.href = url; a.download = `switchon-${suffix}-${todayStr()}.png`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     });
