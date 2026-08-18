@@ -249,28 +249,24 @@
   .report-final-note{text-align:center; background:var(--sage-soft); color:var(--sage-deep); font-weight:700; font-size:13px;
     border-radius:12px; padding:11px; margin-bottom:14px;}
 
-  .insight-deck{display:flex; overflow-x:auto; gap:12px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
-    scrollbar-width:none; margin:0 -20px 10px; padding:0 20px 4px;}
-  .insight-deck::-webkit-scrollbar{display:none;}
-  .insight-card{flex:0 0 100%; scroll-snap-align:center; border-radius:22px; padding:24px 22px; min-height:280px;
-    position:relative; overflow:hidden; color:#fff; display:flex; flex-direction:column;}
+  .insight-card{border-radius:22px; padding:26px 22px; min-height:340px;
+    position:relative; overflow:hidden; color:#fff; display:flex; flex-direction:column; margin-bottom:12px;}
   .insight-blob{position:absolute; border-radius:50%; background:rgba(255,255,255,.16); pointer-events:none;}
-  .insight-blob1{width:150px; height:150px; top:-50px; right:-40px;}
-  .insight-blob2{width:110px; height:110px; bottom:-30px; left:-30px;}
-  .insight-title{font-size:14px; font-weight:700; opacity:.9; position:relative;}
-  .insight-big{font-size:38px; font-weight:800; margin-top:20px; letter-spacing:-0.01em; position:relative;}
-  .insight-desc{font-size:13px; line-height:1.6; margin-top:10px; opacity:.95; position:relative; max-width:88%;}
-  .insight-save-btn{margin-top:auto; align-self:flex-start; border:none; background:rgba(255,255,255,.22); color:#fff;
-    font-size:12.5px; font-weight:700; padding:9px 16px; border-radius:100px; position:relative;}
-  .insight-sub{font-size:11.5px; opacity:.75; margin-top:14px; position:relative;}
-  .insight-blue{background:linear-gradient(135deg,#3572EE,#0B3AA6);}
-  .insight-rose{background:linear-gradient(135deg,#E8899B,#B9576D);}
-  .insight-teal{background:linear-gradient(135deg,#4FBFB0,#1E7E72);}
-  .insight-amber{background:linear-gradient(135deg,#F0B15E,#C97F2A);}
-  .insight-lavender{background:linear-gradient(135deg,#A79BE8,#6E5FC4);}
-  .insight-dots{display:flex; justify-content:center; gap:6px; margin-bottom:16px;}
-  .insight-dot{width:6px; height:6px; border-radius:50%; background:var(--line);}
-  .insight-dot.active{background:var(--sage); width:16px; border-radius:100px; transition:width .2s;}
+  .insight-blob1{width:170px; height:170px; top:-60px; right:-50px;}
+  .insight-blob2{width:120px; height:120px; bottom:-30px; left:-30px;}
+  .insight-emoji{font-size:32px; position:relative;}
+  .insight-summary-title{font-size:21px; font-weight:800; margin-top:12px; position:relative; letter-spacing:-0.01em;}
+  .insight-summary-p{font-size:13.5px; line-height:1.65; margin-top:10px; opacity:.95; position:relative;}
+  .insight-chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:16px; position:relative;}
+  .insight-chip{background:rgba(255,255,255,.18); font-size:12px; font-weight:700; padding:6px 12px; border-radius:100px;}
+  .insight-callout{background:rgba(255,255,255,.14); border-radius:14px; padding:13px 16px; margin-top:16px; position:relative;}
+  .insight-callout-lab{font-size:11.5px; opacity:.85;}
+  .insight-callout-val{font-size:18px; font-weight:800; margin-top:3px;}
+  .insight-callout-sub{font-size:11.5px; opacity:.8; margin-top:2px;}
+  .insight-sub{font-size:11.5px; opacity:.75; margin-top:16px; position:relative;}
+  .insight-blue{background:linear-gradient(160deg,#3572EE,#0B3AA6);}
+  .insight-save-btn-outer{width:100%; border:none; background:var(--card); box-shadow:var(--shadow); color:var(--ink);
+    font-size:13.5px; font-weight:700; padding:12px; border-radius:14px; margin-bottom:14px;}
   .report-weeks{display:flex; flex-direction:column; gap:10px; margin-bottom:6px;}
   .rw-bar{height:8px; background:var(--bg); border-radius:100px; overflow:hidden; margin:8px 0 10px;}
   .rw-bar-in{height:100%; background:var(--sage); border-radius:100px;}
@@ -1049,30 +1045,40 @@ function renderReport(){
   const fp = statRow('', '%', first&&first.fatPct, latest&&latest.fatPct, true);
   const sk = statRow('', 'kg', first&&first.skeletal, latest&&latest.skeletal, false);
 
-  const insightCards = [
-    { cls:'insight-blue', title:'체중 변화', big: w.hasData ? w.diffText : '기록 없음',
-      desc: w.hasData ? `첫날 대비 체중이 ${w.diffText} 변했어요. 지금은 ${latest.weight}kg예요.` : '인바디 기록을 추가하면 변화를 보여드려요.' },
-    { cls:'insight-rose', title:'체지방률 변화', big: fp.hasData ? fp.diffText : '기록 없음',
-      desc: fp.hasData ? `첫날 대비 체지방률이 ${fp.diffText} 변했어요. 지금은 ${latest.fatPct}%예요.` : '인바디 기록을 추가하면 변화를 보여드려요.' },
-    { cls:'insight-teal', title:'골격근량 변화', big: sk.hasData ? sk.diffText : '기록 없음',
-      desc: sk.hasData ? `첫날 대비 골격근량이 ${sk.diffText} 변했어요. 지금은 ${latest.skeletal}kg예요.` : '인바디 기록을 추가하면 변화를 보여드려요.' },
-    { cls:'insight-amber', title:'운동 횟수', big: `${oi.exerciseCount}회`,
-      desc: oi.topType ? `가장 많이 한 운동은 ${oi.topType}(${oi.topCount}회)였어요.` : '아직 운동 기록이 없어요.' },
-    { cls:'insight-lavender', title:'물 & 수면', big: oi.waterAvgMl!=null ? `${oi.waterAvgMl}ml` : '기록 없음',
-      desc: `하루 평균 물 섭취예요.${oi.sleepText ? ` 수면은 평균 ${oi.sleepText} 잤어요.` : ' 수면 기록은 아직 없어요.'}` },
-  ];
-  const insightHtml = insightCards.map((c,i)=>`
-    <div class="insight-card ${c.cls}" id="insightCard-${i}">
+  const bestWeekIdx = WEEKS.reduce((best, days, i)=> recordedCount(days) > recordedCount(WEEKS[best]) ? i : best, 0);
+  const bestWeekCount = recordedCount(WEEKS[bestWeekIdx]);
+
+  const chips = [];
+  chips.push(`#준수율_${pct}%`);
+  if(w.hasData) chips.push(`#체중_${w.diffText}`);
+  if(fp.hasData) chips.push(`#체지방률_${fp.diffText}`);
+  if(sk.hasData) chips.push(`#골격근량_${sk.diffText}`);
+  chips.push(`#운동_${oi.exerciseCount}회`);
+  if(oi.waterAvgMl!=null) chips.push(`#물평균_${oi.waterAvgMl}ml`);
+  if(oi.sleepText) chips.push(`#수면평균_${oi.sleepText}`);
+
+  const summaryLine1 = `${START_DATE.slice(5).replace('-','.')}부터 오늘까지, ${TOTAL_DAYS}일 중 ${total}일을 기록했어요.`;
+  const summaryLine2 = w.hasData
+    ? `체중은 첫날 대비 ${w.diffText}, 운동은 총 ${oi.exerciseCount}회 했어요.`
+    : `운동은 총 ${oi.exerciseCount}회 기록했어요.`;
+
+  const insightHtml = `
+    <div class="insight-card insight-blue" id="insightCard-0">
       <div class="insight-blob insight-blob1"></div>
       <div class="insight-blob insight-blob2"></div>
-      <div class="insight-title">${c.title}</div>
-      <div class="insight-big">${c.big}</div>
-      <div class="insight-desc">${c.desc}</div>
-      <button class="insight-save-btn" data-idx="${i}">이미지로 저장</button>
+      <div class="insight-emoji">${isFinal ? '🎉' : '📊'}</div>
+      <div class="insight-summary-title">2026 스위치온 · ${isFinal ? '최종' : '중간'} 결산</div>
+      <div class="insight-summary-p">${summaryLine1}</div>
+      <div class="insight-summary-p">${summaryLine2}</div>
+      <div class="insight-chips">${chips.map(c=>`<span class="insight-chip">${c}</span>`).join('')}</div>
+      <div class="insight-callout">
+        <div class="insight-callout-lab">가장 잘 지킨 주</div>
+        <div class="insight-callout-val">${bestWeekIdx+1}주차</div>
+        <div class="insight-callout-sub">${bestWeekCount}/7일 기록</div>
+      </div>
       <div class="insight-sub">${dateRangeText}</div>
     </div>
-  `).join('');
-  const dotsHtml = insightCards.map((_,i)=>`<span class="insight-dot${i===0?' active':''}"></span>`).join('');
+  `;
 
   body.innerHTML = `
     <div id="reportCapture">
@@ -1085,39 +1091,31 @@ function renderReport(){
           <div class="rp-num">${pct}%</div>
         </div>
       </div>
-      <div class="insight-deck" id="insightDeck">${insightHtml}</div>
-      <div class="insight-dots" id="insightDots">${dotsHtml}</div>
+      ${insightHtml}
+      <button class="insight-save-btn-outer" id="saveInsightImg">📸 이미지로 저장</button>
       ${isFinal ? `<div class="report-final-note">🎉 4주 스위치온 완주를 축하해요!</div>` : ''}
       <div class="report-weeks">${weekCards}</div>
     </div>
   `;
-  const deck = document.getElementById('insightDeck');
-  deck.addEventListener('scroll', ()=>{
-    const idx = Math.round(deck.scrollLeft / deck.clientWidth);
-    document.querySelectorAll('#insightDots .insight-dot').forEach((d,i)=> d.classList.toggle('active', i===idx));
-  });
-  deck.querySelectorAll('.insight-save-btn').forEach(btn=>{
-    btn.addEventListener('click', async (e)=>{
-      e.stopPropagation();
-      if(typeof html2canvas === 'undefined'){ toast('이미지 저장 기능을 불러오지 못했어요'); return; }
-      const idx = btn.dataset.idx;
-      const target = document.getElementById(`insightCard-${idx}`);
-      btn.textContent = '저장 중...';
-      try{
-        const canvas = await html2canvas(target, { backgroundColor:null, scale:2 });
-        canvas.toBlob((blob)=>{
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = `switchon-insight-${idx}-${todayStr()}.png`;
-          document.body.appendChild(a); a.click(); a.remove();
-          URL.revokeObjectURL(url);
-        });
-      }catch(err){
-        toast('이미지 저장에 실패했어요');
-      }finally{
-        btn.textContent = '이미지로 저장';
-      }
-    });
+  document.getElementById('saveInsightImg').addEventListener('click', async (e)=>{
+    if(typeof html2canvas === 'undefined'){ toast('이미지 저장 기능을 불러오지 못했어요'); return; }
+    const btn = e.currentTarget;
+    const target = document.getElementById('insightCard-0');
+    btn.textContent = '저장 중...';
+    try{
+      const canvas = await html2canvas(target, { backgroundColor:null, scale:2 });
+      canvas.toBlob((blob)=>{
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `switchon-insight-${todayStr()}.png`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      });
+    }catch(err){
+      toast('이미지 저장에 실패했어요');
+    }finally{
+      btn.textContent = '📸 이미지로 저장';
+    }
   });
 }
 function openReportSheet(){
