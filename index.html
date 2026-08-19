@@ -1174,7 +1174,7 @@ function renderWeeks(){
           ${status==='active' ? '<span class="week-badge">진행중</span>' : ''}
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span class="week-count">${recordedCount(days)}/7일 기록</span>
+          <span class="week-count" id="weekCount-${wi}">${recordedCount(days)}/7일 기록</span>
           <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
         </div>
       </div>
@@ -1433,7 +1433,13 @@ async function renderDayDetail(wi){
   memo.addEventListener('input', ()=>{
     day.memo = memo.value;
     clearTimeout(memoTimer);
-    memoTimer = setTimeout(()=>{ saveDays(); renderWeeks(); }, 500);
+    memoTimer = setTimeout(async ()=>{
+      await saveDays();
+      const countEl = document.getElementById(`weekCount-${wi}`);
+      if(countEl) countEl.textContent = `${recordedCount(WEEKS[wi])}/7일 기록`;
+      const dot = document.querySelector(`.num[data-date="${date}"][data-week="${wi}"]`);
+      if(dot) dot.classList.toggle('recorded', dayHasRecord(date));
+    }, 500);
   });
 }
 
