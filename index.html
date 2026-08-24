@@ -90,6 +90,8 @@
   .fasting-time{font-size:18px; font-weight:800; margin-top:5px; font-variant-numeric:tabular-nums; letter-spacing:-.01em;}
   .fasting-time.idle{font-size:13.5px; font-weight:600; color:var(--ink-faint);}
   .fasting-since{font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
+  .fasting-edit{border:none; background:none; color:var(--sage); font-size:11px; font-weight:700; margin-top:4px; padding:0;
+    text-decoration:underline; text-underline-offset:2px;}
   .fasting-btn{flex-shrink:0; border:none; border-radius:100px; padding:11px 18px; font-size:13px; font-weight:800; color:#fff; background:var(--sage);}
   .fasting-btn.stop{background:var(--rose);}
 
@@ -383,6 +385,7 @@
             <div class="fasting-label">⏱️ 단식 타이머</div>
             <div class="fasting-time" id="fastingTime">아직 단식을 시작하지 않았어요</div>
             <div class="fasting-since" id="fastingSince"></div>
+            <button class="fasting-edit" id="fastingEdit" style="display:none;">시작 시간 수정</button>
           </div>
           <button class="fasting-btn" id="fastingBtn">단식 시작</button>
         </div>
@@ -566,6 +569,15 @@
   <img id="lightboxImg" src="">
   <button class="lightbox-nav lightbox-next" id="lightboxNext" style="display:none;">›</button>
   <div class="lightbox-dots" id="lightboxDots"></div>
+</div>
+
+<!-- ===== Fasting start-time edit sheet ===== -->
+<div class="overlay" id="ovFastingEdit">
+  <div class="sheet">
+    <div class="sheet-head"><h3>단식 시작 시간 수정</h3><button class="sheet-close" data-close="ovFastingEdit">✕</button></div>
+    <div class="field"><label>실제로 단식을 시작한 시각</label><input type="datetime-local" id="fastingEditInput"></div>
+    <button class="primary-btn" id="saveFastingEdit">저장</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -2086,6 +2098,7 @@ function renderFasting(){
   const timeEl = document.getElementById('fastingTime');
   const sinceEl = document.getElementById('fastingSince');
   const btn = document.getElementById('fastingBtn');
+  const editBtn = document.getElementById('fastingEdit');
   if(!timeEl) return;
   if(fastingStart){
     const diffMs = Math.max(0, Date.now() - new Date(fastingStart).getTime());
@@ -2096,14 +2109,36 @@ function renderFasting(){
     sinceEl.textContent = fmtSince(fastingStart);
     btn.textContent = '단식 종료';
     btn.classList.add('stop');
+    editBtn.style.display = 'block';
   } else {
     timeEl.textContent = '아직 단식을 시작하지 않았어요';
     timeEl.classList.add('idle');
     sinceEl.textContent = '';
     btn.textContent = '단식 시작';
     btn.classList.remove('stop');
+    editBtn.style.display = 'none';
   }
 }
+
+function toLocalDatetimeInputValue(iso){
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+document.getElementById('fastingEdit').addEventListener('click', ()=>{
+  if(!fastingStart) return;
+  document.getElementById('fastingEditInput').value = toLocalDatetimeInputValue(fastingStart);
+  showOverlay('ovFastingEdit');
+});
+document.getElementById('saveFastingEdit').addEventListener('click', async ()=>{
+  const v = document.getElementById('fastingEditInput').value;
+  if(!v){ toast('시간을 선택해주세요'); return; }
+  fastingStart = new Date(v).toISOString();
+  await storageSet('fastingStart', fastingStart);
+  hideOverlay('ovFastingEdit');
+  renderFasting();
+  toast('단식 시작 시간을 수정했어요');
+});
 
 document.getElementById('fastingBtn').addEventListener('click', async ()=>{
   if(fastingStart){
