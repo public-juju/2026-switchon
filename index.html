@@ -807,9 +807,90 @@ async function loadAll(){
 async function saveDays(){ const ok = await storageSet('days', JSON.stringify(DAYS)); if(!ok) toast('저장 실패 — 다시 시도해주세요'); }
 async function saveInbody(){ const ok = await storageSet('inbody', JSON.stringify(INBODY)); if(!ok) toast('저장 실패 — 다시 시도해주세요'); }
 async function saveWeekFoods(){ await storageSet('weekFoods', JSON.stringify(WEEK_FOODS)); }
-async function getPhoto(key){ return await storageGet(key); }
-async function setPhoto(key, dataUrl){ const ok = await storageSet(key, dataUrl); if(!ok) toast('사진 저장 실패 (용량이 너무 클 수 있어요)'); }
-async function delPhoto(key){ await storageDelete(key); }
+/* ---------- 사진 전용 저장소 (IndexedDB) ----------
+   localStorage는 보통 5~10MB밖에 안 돼서 식단 사진이 쌓이면 금방 한계에 부딪힌다.
+   Claude 안(HAS_CLAUDE_STORAGE)에서는 기존 window.storage를 그대로 쓰고,
+   다운로드해서 단독으로 열었을 때(standalone)는 사진만 훨씬 큰 용량의
+   IndexedDB에 저장해서 용량 부족으로 조용히 실패하는 걸 막는다. */
+function isPhotoKey(key){
+  return key.startsWith('photo:') || key.startsWith('exphoto:') || key.startsWith('inbodyPhoto:');
+}
+let idbPromise = null;
+function openPhotoDB(){
+  if(idbPromise) return idbPromise;
+  idbPromise = new Promise((resolve, reject)=>{
+    if(typeof indexedDB === 'undefined'){ reject(new Error('no indexeddb')); return; }
+    const req = indexedDB.open('switchon-photos-db', 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore('photos'); };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+  return idbPromise;
+}
+async function idbGet(key){
+  try{
+    const db = await openPhotoDB();
+    return await new Promise((resolve)=>{
+      const req = db.transaction('photos','readonly').objectStore('photos').get(key);
+      req.onsuccess = ()=> resolve(req.result ?? null);
+      req.onerror = ()=> resolve(null);
+    });
+  }catch(e){ return null; }
+}
+async function idbSet(key, value){
+  try{
+    const db = await openPhotoDB();
+    return await new Promise((resolve)=>{
+      const tx = db.transaction('photos','readwrite');
+      tx.objectStore('photos').put(value, key);
+      tx.oncomplete = ()=> resolve(true);
+      tx.onerror = ()=> resolve(false);
+    });
+  }catch(e){ return false; }
+}
+async function idbDelete(key){
+  try{
+    const db = await openPhotoDB();
+    await new Promise((resolve)=>{
+      const tx = db.transaction('photos','readwrite');
+      tx.objectStore('photos').delete(key);
+      tx.oncomplete = ()=> resolve();
+      tx.onerror = ()=> resolve();
+    });
+  }catch(e){}
+}
+async function migratePhotosToIDB(){
+  if(HAS_CLAUDE_STORAGE) return;
+  try{
+    const toMove = [];
+    for(let i=0;i<localStorage.length;i++){
+      const fullKey = localStorage.key(i);
+      if(fullKey && fullKey.startsWith('switchon:') && isPhotoKey(fullKey.slice(9))) toMove.push(fullKey);
+    }
+    for(const fullKey of toMove){
+      const key = fullKey.slice(9);
+      const val = localStorage.getItem(fullKey);
+      if(val){ await idbSet(key, val); localStorage.removeItem(fullKey); }
+    }
+  }catch(e){}
+}
+async function getPhoto(key){
+  if(!HAS_CLAUDE_STORAGE && isPhotoKey(key)) return await idbGet(key);
+  return await storageGet(key);
+}
+async function setPhoto(key, dataUrl){
+  if(!HAS_CLAUDE_STORAGE && isPhotoKey(key)){
+    const ok = await idbSet(key, dataUrl);
+    if(!ok) toast('사진 저장 실패');
+    return;
+  }
+  const ok = await storageSet(key, dataUrl);
+  if(!ok) toast('사진 저장 실패 (용량이 너무 클 수 있어요)');
+}
+async function delPhoto(key){
+  if(!HAS_CLAUDE_STORAGE && isPhotoKey(key)){ await idbDelete(key); return; }
+  await storageDelete(key);
+}
 
 function calcSleepHours(bed, wake){
   if(!bed || !wake) return null;
@@ -2154,6 +2235,7 @@ document.getElementById('fastingBtn').addEventListener('click', async ()=>{
 });
 
 async function init(){
+  await migratePhotosToIDB();
   await loadAll();
   await loadFasting();
   renderHero();
