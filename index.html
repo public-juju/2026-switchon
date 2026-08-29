@@ -251,34 +251,20 @@
   .report-final-note{text-align:center; background:var(--sage-soft); color:var(--sage-deep); font-weight:700; font-size:13px;
     border-radius:12px; padding:11px; margin-bottom:14px;}
 
-  .insight-card{border-radius:22px; padding:26px 22px; min-height:340px;
-    position:relative; overflow:hidden; color:#fff; display:flex; flex-direction:column; margin-bottom:12px;}
+  .insight-card{border-radius:22px; padding:30px 24px; aspect-ratio:9/16; max-width:420px; margin:0 auto 14px;
+    position:relative; overflow:hidden; color:#fff; display:flex; flex-direction:column;}
   .insight-blob{position:absolute; border-radius:50%; background:rgba(255,255,255,.16); pointer-events:none;}
   .insight-blob1{width:170px; height:170px; top:-60px; right:-50px;}
   .insight-blob2{width:120px; height:120px; bottom:-30px; left:-30px;}
-  .insight-emoji{font-size:32px; position:relative;}
-  .insight-summary-title{font-size:21px; font-weight:800; margin-top:12px; position:relative; letter-spacing:-0.01em;}
-  .insight-summary-p{font-size:13.5px; line-height:1.65; margin-top:10px; opacity:.95; position:relative;}
-  .insight-chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:16px; position:relative;}
-  .insight-chip{background:rgba(255,255,255,.18); font-size:12px; font-weight:700; padding:6px 12px; border-radius:100px;}
-  .insight-callout{background:rgba(255,255,255,.14); border-radius:14px; padding:13px 16px; margin-top:16px; position:relative;}
-  .insight-callout-lab{font-size:11.5px; opacity:.85;}
-  .insight-callout-val{font-size:18px; font-weight:800; margin-top:3px;}
-  .insight-callout-sub{font-size:11.5px; opacity:.8; margin-top:2px;}
-  .insight-sub{font-size:11.5px; opacity:.75; margin-top:16px; position:relative;}
+  .insight-emoji{font-size:36px; position:relative;}
+  .insight-summary-title{font-size:23px; font-weight:800; margin-top:16px; position:relative; letter-spacing:-0.01em;}
+  .insight-summary-p{font-size:14px; line-height:1.7; margin-top:12px; opacity:.95; position:relative;}
+  .insight-chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; position:relative;}
+  .insight-chip{background:rgba(255,255,255,.18); font-size:12.5px; font-weight:700; padding:7px 13px; border-radius:100px;}
+  .insight-sub{font-size:12px; opacity:.75; margin-top:auto; padding-top:16px; position:relative;}
   .insight-blue{background:linear-gradient(160deg,#3572EE,#0B3AA6);}
   .insight-save-btn-outer{width:100%; border:none; background:var(--card); box-shadow:var(--shadow); color:var(--ink);
     font-size:13.5px; font-weight:700; padding:12px; border-radius:14px; margin-bottom:14px;}
-  .report-weeks{display:flex; flex-direction:column; gap:10px; margin-bottom:6px;}
-  .rw-bar{height:8px; background:var(--bg); border-radius:100px; overflow:hidden; margin:8px 0 10px;}
-  .rw-bar-in{height:100%; background:var(--sage); border-radius:100px;}
-  .week-insight-card{background:var(--bg); border-radius:14px; padding:13px 14px;}
-  .wi-head{display:flex; align-items:center; justify-content:space-between;}
-  .wi-title{font-size:13.5px; font-weight:800;}
-  .wi-count{font-size:11.5px; color:var(--ink-soft); font-weight:600;}
-  .wi-stats{display:flex; flex-direction:column; gap:4px;}
-  .wi-stat{font-size:12px; color:var(--ink-soft);}
-  .wi-stat b{color:var(--ink); font-weight:700;}
 
   .cmp-table{width:100%; border-collapse:collapse; margin-top:10px;}
   .cmp-table th{font-size:11px; color:var(--ink-soft); font-weight:600; text-align:right; padding:6px 4px;}
@@ -1050,26 +1036,6 @@ function renderHero(){
 function totalRecordedDays(){
   return WEEKS.flat().filter(dayHasRecord).length;
 }
-function weeklyInsights(days){
-  let exerciseCount = 0;
-  let waterSum = 0, waterLoggedDays = 0;
-  let sleepSum = 0, sleepLoggedDays = 0;
-  days.forEach(date=>{
-    const d = DAYS[date];
-    if(!d) return;
-    if(d.exercise && d.exercise.length) exerciseCount += d.exercise.length;
-    if(d.water){ waterSum += d.water; waterLoggedDays++; }
-    if(d.sleep!=null){ sleepSum += d.sleep; sleepLoggedDays++; }
-  });
-  const waterAvgMl = waterLoggedDays ? Math.round((waterSum/waterLoggedDays)*WATER_ML_PER_CUP) : null;
-  const sleepAvgHours = sleepLoggedDays ? sleepSum/sleepLoggedDays : null;
-  let sleepText = '기록 없음';
-  if(sleepAvgHours!=null){
-    const h = Math.floor(sleepAvgHours), m = Math.round((sleepAvgHours-h)*60);
-    sleepText = `평균 ${h}시간 ${m>0? m+'분':''}`.trim();
-  }
-  return { exerciseCount, waterAvgMl, sleepText, waterLoggedDays, sleepLoggedDays };
-}
 function overallInsights(){
   const allDays = WEEKS.flat();
   let exerciseCount = 0;
@@ -1112,25 +1078,6 @@ function renderReport(){
     const sign = diff>0 ? '+' : '';
     return { diffText:`${sign}${diff}${unit}`, diff, hasData:true };
   };
-
-  const weekCards = WEEKS.map((days, i)=>{
-    const c = recordedCount(days);
-    const p = Math.round(c/7*100);
-    const ins = weeklyInsights(days);
-    return `
-      <div class="week-insight-card" id="weekCard-${i}">
-        <div class="wi-head">
-          <span class="wi-title">${i+1}주차</span>
-          <span class="wi-count">${c}/7일 기록</span>
-        </div>
-        <div class="rw-bar"><div class="rw-bar-in" style="width:${p}%"></div></div>
-        <div class="wi-stats">
-          <div class="wi-stat">🏋️ 운동 <b>${ins.exerciseCount}회</b></div>
-          <div class="wi-stat">💧 물 <b>${ins.waterAvgMl!=null ? '평균 '+ins.waterAvgMl+'ml' : '기록 없음'}</b></div>
-          <div class="wi-stat">😴 수면 <b>${ins.sleepText}</b></div>
-        </div>
-      </div>`;
-  }).join('');
 
   const dateRangeText = `${START_DATE.slice(5).replace('-','.')} – ${todayStr() < END_DATE ? todayStr().slice(5).replace('-','.') : END_DATE.slice(5).replace('-','.')}`;
   const oi = overallInsights();
@@ -1179,7 +1126,6 @@ function renderReport(){
       ${insightHtml}
       <button class="insight-save-btn-outer" id="saveInsightImg">📸 이미지로 저장</button>
       ${isFinal ? `<div class="report-final-note">🎉 4주 스위치온 완주를 축하해요!</div>` : ''}
-      <div class="report-weeks">${weekCards}</div>
     </div>
   `;
   document.getElementById('saveInsightImg').addEventListener('click', async (e)=>{
