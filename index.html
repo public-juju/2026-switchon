@@ -1138,8 +1138,13 @@ function renderReport(){
   const fp = statRow('', '%', first&&first.fatPct, latest&&latest.fatPct, true);
   const sk = statRow('', 'kg', first&&first.skeletal, latest&&latest.skeletal, false);
 
-  const bestWeekIdx = WEEKS.reduce((best, days, i)=> recordedCount(days) > recordedCount(WEEKS[best]) ? i : best, 0);
-  const bestWeekCount = recordedCount(WEEKS[bestWeekIdx]);
+  let bestDate = null;
+  Object.keys(INBODY).forEach(d=>{
+    const rec = INBODY[d];
+    if(rec.weight==null) return;
+    if(bestDate==null || rec.weight < INBODY[bestDate].weight) bestDate = d;
+  });
+  const bestRec = bestDate ? INBODY[bestDate] : null;
 
   const chips = [];
   chips.push(`#준수율_${pct}%`);
@@ -1165,9 +1170,9 @@ function renderReport(){
       <div class="insight-summary-p">${summaryLine2}</div>
       <div class="insight-chips">${chips.map(c=>`<span class="insight-chip">${c}</span>`).join('')}</div>
       <div class="insight-callout">
-        <div class="insight-callout-lab">가장 잘 지킨 주</div>
-        <div class="insight-callout-val">${bestWeekIdx+1}주차</div>
-        <div class="insight-callout-sub">${bestWeekCount}/7일 기록</div>
+        <div class="insight-callout-lab">체중이 가장 낮았던 날</div>
+        <div class="insight-callout-val">${bestRec ? bestRec.weight+'kg' : '기록 없음'}</div>
+        <div class="insight-callout-sub">${bestDate ? `${fmtMD(bestDate)} (${dowLabel(bestDate)})${bestRec.fatPct!=null ? ' · 체지방률 '+bestRec.fatPct+'%' : ''}` : ''}</div>
       </div>
       <div class="insight-sub">${dateRangeText}</div>
     </div>
